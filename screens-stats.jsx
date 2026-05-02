@@ -8,22 +8,23 @@ function Dashboard({ state, stats, onNavigate, onSelectPlayer, onSelectMatch }) 
   const totalGoals = matches.reduce((s,m)=>s+m.teamA.score+m.teamB.score,0);
   const avgGoals = matches.length ? (totalGoals/matches.length).toFixed(1) : '0';
 
-  const sortedByPts = Object.values(stats).sort((a,b)=>b.points-a.points).slice(0,5);
   const sortedByGoals = Object.values(stats).sort((a,b)=>b.goals-a.goals).slice(0,5);
   const sortedByAssists = Object.values(stats).sort((a,b)=>b.assists-a.assists).slice(0,5);
   const sortedByWins = Object.values(stats).sort((a,b)=>b.wins-a.wins).slice(0,5);
 
+  const empty = matches.length === 0 && players.length === 0;
+
   return (
     <div style={{ display:'flex', flexDirection:'column', gap: 24 }}>
       {/* Hero */}
-      <Card style={{ padding: 28 }}>
+      <Card className="card-mobile" style={{ padding: 28 }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 22 }}>
           <div>
             <div style={{
               fontSize: 11, fontWeight: 600, letterSpacing: '0.12em',
               textTransform: 'uppercase', color: 'var(--fg-3)', marginBottom: 8,
             }}>Temporada 2026</div>
-            <h1 style={{
+            <h1 className="hero-title" style={{
               fontFamily: 'var(--font-head)', fontWeight: 'var(--head-weight)',
               textTransform: 'var(--head-transform)', letterSpacing: 'var(--head-tracking)',
               fontSize: 48, margin: 0, lineHeight: 1.05, whiteSpace: 'nowrap',
@@ -32,8 +33,7 @@ function Dashboard({ state, stats, onNavigate, onSelectPlayer, onSelectMatch }) 
               {matches.length} {matches.length === 1 ? 'rodada disputada' : 'rodadas disputadas'} · {players.length} jogadores ativos
             </div>
           </div>
-          <div style={{
-            display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 24,
+          <div className="grid-4" style={{
             paddingTop: 22, borderTop: '1px solid var(--line)',
           }}>
             <Stat label="Rodadas" value={matches.length} />
@@ -44,46 +44,56 @@ function Dashboard({ state, stats, onNavigate, onSelectPlayer, onSelectMatch }) 
         </div>
       </Card>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 24 }}>
-        {/* Bola de Ouro */}
-        <Card>
-          <SectionTitle action={
-            <button onClick={()=>onNavigate('rankings')} style={linkBtn}>ver tudo →</button>
-          }>🏆 Bola de Ouro</SectionTitle>
-          <div style={{ display:'flex', flexDirection:'column', gap: 0 }}>
-            {sortedByPts.map((s, i) => (
-              <RankRow key={s.id} idx={i} player={playerById[s.id]} value={s.points} unit="pts"
-                       onClick={()=>onSelectPlayer(s.id)} highlight={i===0}/>
-            ))}
+      {empty && (
+        <Card className="card-mobile">
+          <div style={{ textAlign:'center', padding: '20px 4px' }}>
+            <div style={{ fontSize: 40, marginBottom: 8 }}>⚽</div>
+            <h2 style={{
+              fontFamily:'var(--font-head)', fontWeight:'var(--head-weight)',
+              textTransform:'var(--head-transform)', letterSpacing:'var(--head-tracking)',
+              fontSize: 22, margin: '0 0 8px',
+            }}>Bora começar</h2>
+            <p style={{ color:'var(--fg-2)', fontSize: 14, margin:'0 auto 18px', maxWidth: 340 }}>
+              Cadastre os jogadores da pelada e registre a primeira rodada.
+            </p>
+            <div style={{ display:'flex', gap: 10, justifyContent:'center', flexWrap:'wrap' }}>
+              <Button variant="accent" onClick={()=>onNavigate('players')}>
+                <Icon.Plus width="14" height="14"/> Adicionar jogadores
+              </Button>
+              <Button variant="ghost" onClick={()=>onNavigate('new-match')}>
+                Registrar rodada
+              </Button>
+            </div>
           </div>
         </Card>
+      )}
 
-        {/* Última partida */}
-        {lastMatch && (
-          <Card>
-            <SectionTitle action={
-              <button onClick={()=>onNavigate('history')} style={linkBtn}>histórico →</button>
-            }>Última rodada</SectionTitle>
-            <button onClick={()=>onSelectMatch(lastMatch.id)} style={{
-              all:'unset', cursor:'pointer', display:'block', width:'100%',
-            }}>
-              <MatchScoreboard match={lastMatch} playerById={playerById} compact />
-            </button>
-          </Card>
-        )}
-      </div>
+      {!empty && lastMatch && (
+        <Card className="card-mobile">
+          <SectionTitle action={
+            <button onClick={()=>onNavigate('history')} style={linkBtn}>histórico →</button>
+          }>Última rodada</SectionTitle>
+          <button onClick={()=>onSelectMatch(lastMatch.id)} style={{
+            all:'unset', cursor:'pointer', display:'block', width:'100%',
+          }}>
+            <MatchScoreboard match={lastMatch} playerById={playerById} compact />
+          </button>
+        </Card>
+      )}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 24 }}>
-        <MiniLeaderboard title="Artilharia" data={sortedByGoals} unit="gols"
-                         keyName="goals" playerById={playerById}
-                         onSelectPlayer={onSelectPlayer}/>
-        <MiniLeaderboard title="Assistências" data={sortedByAssists} unit="ass."
-                         keyName="assists" playerById={playerById}
-                         onSelectPlayer={onSelectPlayer}/>
-        <MiniLeaderboard title="Vitórias" data={sortedByWins} unit="V"
-                         keyName="wins" playerById={playerById}
-                         onSelectPlayer={onSelectPlayer}/>
-      </div>
+      {!empty && (
+        <div className="grid-3">
+          <MiniLeaderboard title="Artilharia" data={sortedByGoals} unit="gols"
+                           keyName="goals" playerById={playerById}
+                           onSelectPlayer={onSelectPlayer}/>
+          <MiniLeaderboard title="Assistências" data={sortedByAssists} unit="ass."
+                           keyName="assists" playerById={playerById}
+                           onSelectPlayer={onSelectPlayer}/>
+          <MiniLeaderboard title="Vitórias" data={sortedByWins} unit="V"
+                           keyName="wins" playerById={playerById}
+                           onSelectPlayer={onSelectPlayer}/>
+        </div>
+      )}
     </div>
   );
 }
@@ -107,7 +117,8 @@ function RankRow({ idx, player, value, unit, onClick, highlight }) {
         fontWeight: 600,
       }}>{idx + 1}</div>
       <Avatar player={player} size={30}/>
-      <div style={{ flex: 1, fontWeight: 500 }}>{player.name}</div>
+      <div style={{ flex: 1, fontWeight: 500, minWidth: 0,
+                    overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{player.name}</div>
       <div style={{
         fontFamily:'var(--font-mono)', fontSize: 14, fontWeight: 600,
         color: 'var(--fg)', fontVariantNumeric:'tabular-nums',
@@ -118,9 +129,14 @@ function RankRow({ idx, player, value, unit, onClick, highlight }) {
 
 function MiniLeaderboard({ title, data, unit, keyName, playerById, onSelectPlayer }) {
   return (
-    <Card>
+    <Card className="card-mobile">
       <SectionTitle>{title}</SectionTitle>
       <div>
+        {data.length === 0 && (
+          <div style={{ color:'var(--fg-3)', fontSize: 13, padding:'12px 0' }}>
+            Sem dados ainda.
+          </div>
+        )}
         {data.map((s, i) => (
           <RankRow key={s.id} idx={i} player={playerById[s.id]}
                    value={s[keyName]} unit={unit} highlight={i===0}
@@ -141,13 +157,13 @@ function MatchScoreboard({ match, playerById, compact = false }) {
         textTransform: 'uppercase', color: 'var(--fg-3)', marginBottom: 14,
       }}>{fmtDateLong(match.date)}</div>
 
-      <div style={{
+      <div className="scoreboard-grid" style={{
         display:'grid', gridTemplateColumns: '1fr auto 1fr',
         alignItems:'center', gap: 20,
       }}>
         <TeamCol team={match.teamA} won={winA} align="right" playerById={playerById} compact={compact}/>
         <div style={{ textAlign:'center' }}>
-          <div style={{
+          <div className="score-mobile" style={{
             fontFamily:'var(--font-head)', fontWeight: 'var(--head-weight)',
             fontSize: 56, lineHeight: 1, fontVariantNumeric:'tabular-nums',
             letterSpacing: 'var(--head-tracking)',
@@ -158,9 +174,9 @@ function MatchScoreboard({ match, playerById, compact = false }) {
         <TeamCol team={match.teamB} won={winB} align="left" playerById={playerById} compact={compact}/>
       </div>
 
-      {!compact && match.events && (
+      {!compact && match.events && match.events.length > 0 && (
         <div style={{ marginTop: 22, paddingTop: 16, borderTop: '1px solid var(--line)' }}>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 24 }}>
+          <div className="grid-2 events-grid">
             <div>
               {match.events.filter(e=>e.team!=='B').map((ev, i) => (
                 <EventRow key={'a'+i} ev={ev} playerById={playerById} side="left"/>
@@ -172,26 +188,6 @@ function MatchScoreboard({ match, playerById, compact = false }) {
               ))}
             </div>
           </div>
-        </div>
-      )}
-
-      {!compact && (match.mvp || match.flop) && (
-        <div style={{
-          marginTop: 16, paddingTop: 16, borderTop: '1px solid var(--line)',
-          display:'grid', gridTemplateColumns:'1fr 1fr', gap: 24,
-        }}>
-          {match.mvp && playerById[match.mvp] && (
-            <div style={{ display:'flex', alignItems:'center', gap: 10 }}>
-              <Badge tone="accent">⭐ Craque</Badge>
-              <PlayerChip player={playerById[match.mvp]} size={28}/>
-            </div>
-          )}
-          {match.flop && playerById[match.flop] && (
-            <div style={{ display:'flex', alignItems:'center', gap: 10, justifyContent:'flex-end' }}>
-              <Badge tone="loss">💀 Pior</Badge>
-              <PlayerChip player={playerById[match.flop]} size={28}/>
-            </div>
-          )}
         </div>
       )}
     </div>
@@ -206,14 +202,14 @@ function TeamCol({ team, won, align, playerById, compact }) {
         flexDirection: align === 'right' ? 'row-reverse' : 'row',
       }}>
         <div style={{
-          width: 14, height: 14, borderRadius: 3,
+          width: 14, height: 14, borderRadius: 3, flexShrink: 0,
           background: team.color,
           border: team.color === '#f4f1ea' ? '1px solid var(--line-2)' : 'none',
         }}/>
-        <div style={{
+        <div className="team-name" style={{
           fontFamily: 'var(--font-head)', fontWeight: 'var(--head-weight)',
           textTransform: 'var(--head-transform)', letterSpacing: 'var(--head-tracking)',
-          fontSize: 18,
+          fontSize: 18, minWidth: 0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
         }}>{team.name}</div>
         {won && <Badge tone="win">V</Badge>}
       </div>
@@ -243,7 +239,7 @@ function EventRow({ ev, playerById, side }) {
   const assister = ev.assist ? playerById[ev.assist] : null;
   if (!scorer) return null;
   return (
-    <div style={{
+    <div className="event-row-text" style={{
       display:'flex', alignItems:'center', gap: 8, padding:'5px 0',
       flexDirection: side === 'right' ? 'row-reverse' : 'row',
       textAlign: side === 'right' ? 'right' : 'left',
@@ -258,9 +254,8 @@ function EventRow({ ev, playerById, side }) {
 // ── Rankings full page ──────────────────────────────────────────────────────
 
 function Rankings({ state, stats, onSelectPlayer }) {
-  const [tab, setTab] = React.useState('points');
+  const [tab, setTab] = React.useState('goals');
   const tabs = [
-    { id: 'points',  label: 'Bola de Ouro', key: 'points',  unit: 'pts'  },
     { id: 'goals',   label: 'Artilharia',   key: 'goals',   unit: 'gols' },
     { id: 'assists', label: 'Assistências', key: 'assists', unit: 'ass.' },
     { id: 'wins',    label: 'Vitórias',     key: 'wins',    unit: 'V'    },
@@ -274,7 +269,7 @@ function Rankings({ state, stats, onSelectPlayer }) {
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap: 24 }}>
-      <h1 style={{
+      <h1 className="h1-mobile" style={{
         fontFamily: 'var(--font-head)', fontWeight: 'var(--head-weight)',
         textTransform: 'var(--head-transform)', letterSpacing: 'var(--head-tracking)',
         fontSize: 36, margin: 0, lineHeight: 1.1,
@@ -293,48 +288,90 @@ function Rankings({ state, stats, onSelectPlayer }) {
         ))}
       </div>
 
-      <Card noPad>
-        <table style={{ width:'100%', borderCollapse:'collapse', fontFamily:'var(--font-body)' }}>
-          <thead>
-            <tr style={{ borderBottom: '1px solid var(--line)' }}>
-              <Th>#</Th>
-              <Th>Jogador</Th>
-              <Th right>Jogos</Th>
-              <Th right>Gols</Th>
-              <Th right>Ass.</Th>
-              <Th right>V</Th>
-              <Th right>E</Th>
-              <Th right>D</Th>
-              <Th right>★</Th>
-              <Th right>Pts</Th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((s, i) => (
-              <tr key={s.id} onClick={()=>onSelectPlayer(s.id)} style={{
-                borderBottom: '1px solid var(--line)', cursor:'pointer',
-              }} className="rank-row">
-                <Td><span style={{
-                  fontFamily:'var(--font-mono)', color: i<3 ? 'var(--accent)' : 'var(--fg-3)',
-                  fontWeight: 600,
-                }}>{i+1}</span></Td>
-                <Td><div style={{ display:'flex', alignItems:'center', gap: 10 }}>
-                  <Avatar player={playerById[s.id]} size={28}/>
-                  <span style={{ fontWeight: 500 }}>{s.name}</span>
-                </div></Td>
-                <Td right mono>{s.played}</Td>
-                <Td right mono bold={cur.key==='goals'}>{s.goals}</Td>
-                <Td right mono bold={cur.key==='assists'}>{s.assists}</Td>
-                <Td right mono bold={cur.key==='wins'} color={s.wins>0?'var(--win)':null}>{s.wins}</Td>
-                <Td right mono>{s.draws}</Td>
-                <Td right mono color={s.losses>0?'var(--loss)':null}>{s.losses}</Td>
-                <Td right mono>{s.mvps || '·'}</Td>
-                <Td right mono bold={cur.key==='points'} color="var(--accent)">{s.points}</Td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </Card>
+      {sorted.length === 0 && (
+        <Card className="card-mobile">
+          <div style={{ textAlign:'center', padding: 30, color:'var(--fg-2)' }}>
+            Sem dados pra mostrar ainda.
+          </div>
+        </Card>
+      )}
+
+      {/* Lista (mobile) */}
+      <div className="show-mobile" style={{ display:'flex', flexDirection:'column', gap: 8 }}>
+        {sorted.map((s, i) => (
+          <Card key={s.id} className="card-mobile" onClick={()=>onSelectPlayer(s.id)}>
+            <div style={{ display:'flex', alignItems:'center', gap: 12 }}>
+              <div style={{
+                width: 26, textAlign:'center', fontFamily:'var(--font-mono)',
+                fontSize: 14, fontWeight: 700,
+                color: i<3 ? 'var(--accent)' : 'var(--fg-3)',
+              }}>{i+1}</div>
+              <Avatar player={playerById[s.id]} size={36}/>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ fontWeight: 600, fontSize: 15,
+                              overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+                  {s.name}
+                </div>
+                <div style={{ fontSize: 12, color:'var(--fg-3)', marginTop: 2 }}>
+                  {s.played} J · {s.goals} G · {s.assists} A · {s.wins}V/{s.draws}E/{s.losses}D
+                </div>
+              </div>
+              <div style={{
+                fontFamily:'var(--font-mono)', fontSize: 18, fontWeight: 700,
+                color: 'var(--accent)', fontVariantNumeric:'tabular-nums',
+                textAlign:'right', minWidth: 50,
+              }}>
+                {s[cur.key]}
+                <div style={{ fontSize: 10, color:'var(--fg-3)', fontWeight: 500 }}>{cur.unit}</div>
+              </div>
+            </div>
+          </Card>
+        ))}
+      </div>
+
+      {/* Tabela (desktop) */}
+      <div className="hide-mobile">
+        <Card noPad>
+          <div className="table-wrap">
+            <table style={{ width:'100%', borderCollapse:'collapse', fontFamily:'var(--font-body)' }}>
+              <thead>
+                <tr style={{ borderBottom: '1px solid var(--line)' }}>
+                  <Th>#</Th>
+                  <Th>Jogador</Th>
+                  <Th right>Jogos</Th>
+                  <Th right>Gols</Th>
+                  <Th right>Ass.</Th>
+                  <Th right>V</Th>
+                  <Th right>E</Th>
+                  <Th right>D</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((s, i) => (
+                  <tr key={s.id} onClick={()=>onSelectPlayer(s.id)} style={{
+                    borderBottom: '1px solid var(--line)', cursor:'pointer',
+                  }} className="rank-row">
+                    <Td><span style={{
+                      fontFamily:'var(--font-mono)', color: i<3 ? 'var(--accent)' : 'var(--fg-3)',
+                      fontWeight: 600,
+                    }}>{i+1}</span></Td>
+                    <Td><div style={{ display:'flex', alignItems:'center', gap: 10 }}>
+                      <Avatar player={playerById[s.id]} size={28}/>
+                      <span style={{ fontWeight: 500 }}>{s.name}</span>
+                    </div></Td>
+                    <Td right mono>{s.played}</Td>
+                    <Td right mono bold={cur.key==='goals'}>{s.goals}</Td>
+                    <Td right mono bold={cur.key==='assists'}>{s.assists}</Td>
+                    <Td right mono bold={cur.key==='wins'} color={s.wins>0?'var(--win)':null}>{s.wins}</Td>
+                    <Td right mono>{s.draws}</Td>
+                    <Td right mono color={s.losses>0?'var(--loss)':null}>{s.losses}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      </div>
       <style>{`.rank-row:hover { background: var(--surface-2); }`}</style>
     </div>
   );
@@ -364,8 +401,8 @@ function History({ state, onSelectMatch, onNavigate }) {
   const matches = [...state.matches].reverse();
   return (
     <div style={{ display:'flex', flexDirection:'column', gap: 24 }}>
-      <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between' }}>
-        <h1 style={{
+      <div className="mobile-row" style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between' }}>
+        <h1 className="h1-mobile" style={{
           fontFamily: 'var(--font-head)', fontWeight: 'var(--head-weight)',
           textTransform: 'var(--head-transform)', letterSpacing: 'var(--head-tracking)',
           fontSize: 36, margin: 0, lineHeight: 1.1,
@@ -375,12 +412,12 @@ function History({ state, onSelectMatch, onNavigate }) {
         </Button>
       </div>
       {matches.length === 0 && (
-        <Card><div style={{ textAlign:'center', padding: 40, color:'var(--fg-2)' }}>
-          Nenhuma partida ainda. Comece uma agora!
+        <Card className="card-mobile"><div style={{ textAlign:'center', padding: 30, color:'var(--fg-2)' }}>
+          Nenhuma partida ainda. Bora começar!
         </div></Card>
       )}
       {matches.map(m => (
-        <Card key={m.id} onClick={()=>onSelectMatch(m.id)}>
+        <Card key={m.id} className="card-mobile" onClick={()=>onSelectMatch(m.id)}>
           <MatchScoreboard match={m} playerById={playerById} compact/>
         </Card>
       ))}
@@ -394,7 +431,7 @@ function MatchDetail({ match, state, onBack, onDelete }) {
   const playerById = Object.fromEntries(state.players.map(p=>[p.id,p]));
   return (
     <div style={{ display:'flex', flexDirection:'column', gap: 24 }}>
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap: 12, flexWrap:'wrap' }}>
         <button onClick={onBack} style={{
           background:'transparent', border: 0, color:'var(--fg-2)',
           fontFamily:'var(--font-body)', fontSize: 13, cursor:'pointer', padding: 0,
@@ -403,7 +440,7 @@ function MatchDetail({ match, state, onBack, onDelete }) {
           if (confirm('Apagar esta partida?')) onDelete(match.id);
         }}>Apagar partida</Button>
       </div>
-      <Card>
+      <Card className="card-mobile">
         <MatchScoreboard match={match} playerById={playerById}/>
       </Card>
     </div>
@@ -418,7 +455,7 @@ function PlayerProfile({ playerId, state, stats, onBack, onSelectMatch, onUpdate
   const playerById = Object.fromEntries(state.players.map(p=>[p.id,p]));
   const playerMatches = state.matches.filter(m =>
     m.teamA.players.includes(playerId) || m.teamB.players.includes(playerId));
-  const allRanked = Object.values(stats).sort((a,b)=>b.points-a.points);
+  const allRanked = Object.values(stats).sort((a,b)=>b.goals-a.goals);
   const rankPos = allRanked.findIndex(x => x.id === playerId) + 1;
 
   if (!player || !s) return <div>Jogador não encontrado</div>;
@@ -431,18 +468,19 @@ function PlayerProfile({ playerId, state, stats, onBack, onSelectMatch, onUpdate
         alignSelf:'flex-start',
       }}>← voltar</button>
 
-      <Card style={{ padding: 28 }}>
-        <div style={{ display:'flex', alignItems:'center', gap: 20 }}>
+      <Card className="card-mobile" style={{ padding: 28 }}>
+        <div style={{ display:'flex', alignItems:'center', gap: 16, flexWrap:'wrap' }}>
           <Avatar player={player} size={88}/>
-          <div style={{ flex: 1 }}>
+          <div style={{ flex: 1, minWidth: 0 }}>
             <div style={{
               fontSize: 11, fontWeight: 600, letterSpacing: '0.12em',
               textTransform: 'uppercase', color: 'var(--fg-3)',
-            }}>#{rankPos} no ranking · {(s.attendance*100).toFixed(0)}% de presença</div>
-            <h1 style={{
+            }}>#{rankPos} artilharia · {(s.attendance*100).toFixed(0)}% de presença</div>
+            <h1 className="h1-mobile" style={{
               fontFamily: 'var(--font-head)', fontWeight: 'var(--head-weight)',
               textTransform: 'var(--head-transform)', letterSpacing: 'var(--head-tracking)',
-              fontSize: 44, margin: '4px 0 0 0', lineHeight: 1.1,
+              fontSize: 40, margin: '4px 0 0 0', lineHeight: 1.1,
+              wordBreak:'break-word',
             }}>{player.name}</h1>
             {player.nick && <div style={{ color:'var(--fg-2)', marginTop: 6, fontStyle:'italic' }}>"{player.nick}"</div>}
           </div>
@@ -452,20 +490,18 @@ function PlayerProfile({ playerId, state, stats, onBack, onSelectMatch, onUpdate
           }}>Editar</Button>
         </div>
 
-        <div style={{
+        <div className="grid-stats-6" style={{
           marginTop: 24, paddingTop: 24, borderTop: '1px solid var(--line)',
-          display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: 20,
         }}>
-          <Stat label="Pts" value={s.points} sub="Bola de Ouro"/>
           <Stat label="Gols" value={s.goals}/>
           <Stat label="Ass." value={s.assists}/>
-          <Stat label="V/E/D" value={`${s.wins}/${s.draws}/${s.losses}`}/>
-          <Stat label="Jogos" value={s.played}/>
-          <Stat label="★ Craque" value={s.mvps}/>
+          <Stat label="V" value={s.wins}/>
+          <Stat label="E" value={s.draws}/>
+          <Stat label="D" value={s.losses}/>
         </div>
       </Card>
 
-      <Card>
+      <Card className="card-mobile">
         <SectionTitle>Histórico em partidas</SectionTitle>
         <div>
           {playerMatches.length === 0 && (
@@ -482,8 +518,8 @@ function PlayerProfile({ playerId, state, stats, onBack, onSelectMatch, onUpdate
             const goals = m.events.filter(e=>e.type==='goal' && e.player===playerId).length;
             const assists = m.events.filter(e=>e.type==='goal' && e.assist===playerId).length;
             return (
-              <div key={m.id} onClick={()=>onSelectMatch(m.id)} style={{
-                display:'grid', gridTemplateColumns:'90px auto 1fr auto', gap: 16,
+              <div key={m.id} onClick={()=>onSelectMatch(m.id)} className="player-history-row" style={{
+                display:'grid', gridTemplateColumns:'90px auto 1fr auto', gap: 12,
                 alignItems:'center', padding: '12px 0',
                 borderBottom: '1px solid var(--line)', cursor:'pointer',
               }}>
@@ -491,13 +527,15 @@ function PlayerProfile({ playerId, state, stats, onBack, onSelectMatch, onUpdate
                   {fmtDate(m.date)}
                 </div>
                 <Badge tone={tone}>{result} {myScore}-{oppScore}</Badge>
-                <div style={{ display:'flex', gap: 14, color:'var(--fg-2)', fontSize: 13 }}>
+                <div className="hide-mobile" style={{ display:'flex', gap: 14, color:'var(--fg-2)', fontSize: 13 }}>
                   {goals>0 && <span>⚽ {goals}</span>}
                   {assists>0 && <span>🅰 {assists}</span>}
-                  {m.mvp===playerId && <Badge tone="accent">★ Craque</Badge>}
-                  {m.flop===playerId && <Badge tone="loss">💀 Pior</Badge>}
                 </div>
-                <Icon.Chevron width="14" height="14" color="var(--fg-3)"/>
+                <div className="show-mobile" style={{ color:'var(--fg-2)', fontSize: 12, textAlign:'right' }}>
+                  {goals>0 && <span style={{ marginRight: 8 }}>⚽ {goals}</span>}
+                  {assists>0 && <span>🅰 {assists}</span>}
+                </div>
+                <Icon.Chevron width="14" height="14" color="var(--fg-3)" className="hide-mobile"/>
               </div>
             );
           })}

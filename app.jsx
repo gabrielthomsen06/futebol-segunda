@@ -13,7 +13,6 @@ function App() {
   React.useEffect(() => { applyTheme(t.theme); }, [t.theme]);
   React.useEffect(() => { saveState(state); }, [state]);
 
-  // override accent on top of theme
   React.useEffect(() => {
     if (t.accent) document.documentElement.style.setProperty('--accent', t.accent);
   }, [t.accent, t.theme]);
@@ -25,7 +24,6 @@ function App() {
     window.scrollTo(0, 0);
   };
 
-  // mutations
   const addMatch = (m) => setState(s => ({ ...s, matches: [...s.matches, m] }));
   const deleteMatch = (id) => setState(s => ({ ...s, matches: s.matches.filter(m => m.id !== id) }));
   const addPlayer = (name) => setState(s => ({
@@ -39,11 +37,16 @@ function App() {
   }));
 
   const navItems = [
-    { id: 'dashboard', label: 'Início' },
-    { id: 'rankings',  label: 'Rankings' },
-    { id: 'history',   label: 'Histórico' },
-    { id: 'players',   label: 'Jogadores' },
+    { id: 'dashboard', label: 'Início',    icon: '🏠' },
+    { id: 'rankings',  label: 'Rankings',  icon: '📊' },
+    { id: 'history',   label: 'Histórico', icon: '📅' },
+    { id: 'players',   label: 'Jogadores', icon: '👥' },
   ];
+
+  const isActive = (id) =>
+    view.name === id ||
+    (id === 'history' && (view.name === 'match' || view.name === 'new-match')) ||
+    (id === 'players' && view.name === 'player');
 
   let content;
   if (view.name === 'dashboard') {
@@ -90,8 +93,7 @@ function App() {
         WebkitBackdropFilter: 'blur(20px)',
         borderBottom: '1px solid var(--line)',
       }}>
-        <div style={{
-          maxWidth: 1200, margin: '0 auto', padding: '14px 32px',
+        <div className="header-inner" style={{
           display: 'flex', alignItems: 'center', gap: 32,
         }}>
           <button onClick={()=>nav('dashboard')} style={{
@@ -105,18 +107,16 @@ function App() {
                 textTransform: 'var(--head-transform)', letterSpacing: 'var(--head-tracking)',
                 fontSize: 18, lineHeight: 1.1,
               }}>Futebol de Segunda</div>
-              <div style={{ fontSize: 10, color: 'var(--fg-3)', letterSpacing: '0.08em',
+              <div className="hide-mobile" style={{ fontSize: 10, color: 'var(--fg-3)', letterSpacing: '0.08em',
                             textTransform: 'uppercase', fontWeight: 600, marginTop: 4 }}>
                 Temporada 2026
               </div>
             </div>
           </button>
 
-          <nav style={{ display: 'flex', gap: 4, flex: 1 }}>
+          <nav className="hide-mobile" style={{ display: 'flex', gap: 4, flex: 1 }}>
             {navItems.map(item => {
-              const active = view.name === item.id ||
-                (item.id === 'history' && (view.name === 'match' || view.name === 'new-match')) ||
-                (item.id === 'players' && view.name === 'player');
+              const active = isActive(item.id);
               return (
                 <button key={item.id} onClick={()=>nav(item.id)} style={{
                   padding: '8px 14px', borderRadius: 'var(--radius)',
@@ -129,23 +129,39 @@ function App() {
             })}
           </nav>
 
-          <Button variant="accent" onClick={()=>nav('new-match')}>
-            <Icon.Plus width="16" height="16"/> Nova rodada
-          </Button>
+          <div style={{ marginLeft: 'auto' }}>
+            <Button variant="accent" onClick={()=>nav('new-match')}>
+              <Icon.Plus width="16" height="16"/>
+              <span className="hide-mobile">Nova rodada</span>
+              <span className="show-mobile">Nova</span>
+            </Button>
+          </div>
         </div>
       </header>
 
-      <main style={{ maxWidth: 1200, margin: '0 auto', padding: '32px' }}>
+      <main className="container">
         {content}
       </main>
 
-      <footer style={{
+      <footer className="hide-mobile" style={{
         maxWidth: 1200, margin: '0 auto', padding: '20px 32px 40px',
         color: 'var(--fg-3)', fontSize: 12, textAlign: 'center',
         borderTop: '1px solid var(--line)', marginTop: 40,
       }}>
         Toda segunda. Pra valer.
       </footer>
+
+      {/* Bottom nav (mobile) */}
+      <nav className="nav-bottom">
+        {navItems.map(item => (
+          <button key={item.id}
+                  className={isActive(item.id) ? 'active' : ''}
+                  onClick={()=>nav(item.id)}>
+            <span style={{ fontSize: 18 }}>{item.icon}</span>
+            <span>{item.label}</span>
+          </button>
+        ))}
+      </nav>
 
       <TweaksPanel title="Tweaks">
         <TweakSection label="Vibe Visual"/>
@@ -178,13 +194,6 @@ function App() {
         </div>
 
         <TweakSection label="Dados"/>
-        <TweakButton label="Recarregar dados de exemplo" secondary
-                     onClick={()=>{
-                       if (confirm('Isso apaga tudo e volta pros dados de exemplo. Confirmar?')) {
-                         resetState();
-                         setState(SEED);
-                       }
-                     }}/>
         <TweakButton label="Limpar tudo (zerar)" secondary
                      onClick={()=>{
                        if (confirm('Apagar TODAS as partidas e jogadores? Não dá pra desfazer.')) {

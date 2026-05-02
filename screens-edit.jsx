@@ -2,13 +2,11 @@
 
 function NewMatch({ state, onSave, onCancel }) {
   const playerById = Object.fromEntries(state.players.map(p=>[p.id,p]));
-  const [step, setStep] = React.useState(1); // 1: teams, 2: events, 3: mvp
+  const [step, setStep] = React.useState(1); // 1: teams, 2: events
   const [date, setDate] = React.useState(new Date().toISOString().slice(0,10));
   const [teamA, setTeamA] = React.useState({ name: 'Coloridos', color: '#e23a3a', players: [], score: 0 });
   const [teamB, setTeamB] = React.useState({ name: 'Brancos', color: '#f4f1ea', players: [], score: 0 });
   const [events, setEvents] = React.useState([]);
-  const [mvp, setMvp] = React.useState(null);
-  const [flop, setFlop] = React.useState(null);
 
   const togglePlayer = (team, pid) => {
     if (team === 'A') {
@@ -41,10 +39,11 @@ function NewMatch({ state, onSave, onCancel }) {
       teamA: { ...teamA, players: [...teamA.players] },
       teamB: { ...teamB, players: [...teamB.players] },
       events: events.map(e => ({ type: e.type, player: e.player, assist: e.assist, team: e.team })),
-      mvp, flop,
     };
     onSave(m);
   };
+
+  const noPlayers = state.players.length === 0;
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap: 24 }}>
@@ -54,14 +53,14 @@ function NewMatch({ state, onSave, onCancel }) {
         alignSelf:'flex-start',
       }}>← cancelar</button>
 
-      <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-        <h1 style={{
+      <div className="mobile-row" style={{ display:'flex', alignItems:'center', justifyContent:'space-between', gap: 12 }}>
+        <h1 className="h1-mobile" style={{
           fontFamily: 'var(--font-head)', fontWeight: 'var(--head-weight)',
           textTransform: 'var(--head-transform)', letterSpacing: 'var(--head-tracking)',
           fontSize: 36, margin: 0, lineHeight: 1.1,
         }}>Nova rodada</h1>
         <div style={{ display:'flex', gap: 8 }}>
-          {['Times','Gols','Craque'].map((label, i) => (
+          {['Times','Gols'].map((label, i) => (
             <div key={label} style={{
               padding: '6px 12px', borderRadius: 999,
               background: step===i+1 ? 'var(--fg)' : 'var(--surface-2)',
@@ -72,9 +71,17 @@ function NewMatch({ state, onSave, onCancel }) {
         </div>
       </div>
 
-      {step === 1 && (
-        <Card>
-          <div style={{ display:'flex', alignItems:'center', gap: 16, marginBottom: 20 }}>
+      {noPlayers && (
+        <Card className="card-mobile">
+          <div style={{ textAlign:'center', padding: 20, color:'var(--fg-2)' }}>
+            Cadastre jogadores primeiro na aba <b>Jogadores</b>.
+          </div>
+        </Card>
+      )}
+
+      {!noPlayers && step === 1 && (
+        <Card className="card-mobile">
+          <div style={{ display:'flex', alignItems:'center', gap: 12, marginBottom: 20, flexWrap:'wrap' }}>
             <span style={{ fontSize: 13, color:'var(--fg-2)' }}>Data:</span>
             <input type="date" value={date} onChange={e=>setDate(e.target.value)}
                    style={{
@@ -84,15 +91,15 @@ function NewMatch({ state, onSave, onCancel }) {
                    }}/>
           </div>
 
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 24 }}>
+          <div className="grid-2">
             {[{t: teamA, set: setTeamA, side:'A'}, {t: teamB, set: setTeamB, side:'B'}].map(({t, set, side}) => (
               <div key={side}>
                 <div style={{ display:'flex', alignItems:'center', gap: 10, marginBottom: 12 }}>
                   <input type="color" value={t.color} onChange={e=>set(x=>({...x,color:e.target.value}))}
-                         style={{ width: 28, height: 28, border:'1px solid var(--line)', borderRadius:6, padding: 0, background:'transparent' }}/>
+                         style={{ width: 36, height: 38, border:'1px solid var(--line)', borderRadius:6, padding: 0, background:'transparent', flexShrink: 0 }}/>
                   <input value={t.name} onChange={e=>set(x=>({...x,name:e.target.value}))}
                          style={{
-                           flex: 1, height: 38, padding:'0 12px',
+                           flex: 1, minWidth: 0, height: 38, padding:'0 12px',
                            background:'var(--surface-2)', border:'1px solid var(--line)',
                            borderRadius:'var(--radius)', color:'var(--fg)',
                            fontFamily:'var(--font-head)', fontSize: 18, fontWeight:'var(--head-weight)',
@@ -109,9 +116,9 @@ function NewMatch({ state, onSave, onCancel }) {
             ))}
           </div>
 
-          <div style={{ marginTop: 24, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <div className="mobile-row" style={{ marginTop: 24, display:'flex', justifyContent:'space-between', alignItems:'center', gap: 12 }}>
             <div style={{ fontSize: 13, color:'var(--fg-2)' }}>
-              {allPlayedIds.length} jogadores escalados · {state.players.length - allPlayedIds.length} de fora
+              {allPlayedIds.length} escalados · {state.players.length - allPlayedIds.length} de fora
             </div>
             <Button onClick={()=>setStep(2)} disabled={!canStep2}>
               Próximo: registrar gols →
@@ -120,11 +127,11 @@ function NewMatch({ state, onSave, onCancel }) {
         </Card>
       )}
 
-      {step === 2 && (
-        <Card>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'center', gap: 24, marginBottom: 24 }}>
+      {!noPlayers && step === 2 && (
+        <Card className="card-mobile">
+          <div className="scoreboard-grid" style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'center', gap: 16, marginBottom: 24 }}>
             <ScoreSide team={teamA} side="left"/>
-            <div style={{
+            <div className="score-mobile" style={{
               fontFamily:'var(--font-head)', fontWeight:'var(--head-weight)',
               fontSize: 56, lineHeight: 1, fontVariantNumeric:'tabular-nums',
               letterSpacing:'var(--head-tracking)', textAlign:'center',
@@ -134,7 +141,7 @@ function NewMatch({ state, onSave, onCancel }) {
             <ScoreSide team={teamB} side="right"/>
           </div>
 
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 24 }}>
+          <div className="grid-2">
             <GoalEditor team={teamA} side="A" playerById={playerById}
                         onAddGoal={(pid, aid)=>addEvent('A', pid, aid)}/>
             <GoalEditor team={teamB} side="B" playerById={playerById}
@@ -161,7 +168,8 @@ function NewMatch({ state, onSave, onCancel }) {
                         {ev.team === 'A' ? teamA.name.slice(0,3) : teamB.name.slice(0,3)}
                       </span>
                       <span style={{ fontSize: 14 }}>⚽</span>
-                      <span style={{ fontWeight: 500, flex: 1 }}>
+                      <span style={{ fontWeight: 500, flex: 1, minWidth: 0,
+                                     overflow:'hidden', textOverflow:'ellipsis' }}>
                         {p.name}
                         {a && <span style={{ color: 'var(--fg-3)', fontWeight: 400 }}> ↳ {a.name}</span>}
                       </span>
@@ -176,30 +184,8 @@ function NewMatch({ state, onSave, onCancel }) {
             </div>
           )}
 
-          <div style={{ marginTop: 24, display:'flex', justifyContent:'space-between' }}>
+          <div className="mobile-row" style={{ marginTop: 24, display:'flex', justifyContent:'space-between', gap: 12 }}>
             <Button variant="ghost" onClick={()=>setStep(1)}>← Voltar</Button>
-            <Button onClick={()=>setStep(3)}>Próximo: Craque/Pior →</Button>
-          </div>
-        </Card>
-      )}
-
-      {step === 3 && (
-        <Card>
-          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 24 }}>
-            <div>
-              <SectionTitle>⭐ Craque da partida</SectionTitle>
-              <PlayerSinglePicker players={state.players.filter(p=>allPlayedIds.includes(p.id))}
-                                  selected={mvp} onSelect={setMvp}/>
-            </div>
-            <div>
-              <SectionTitle>💀 Pior da partida</SectionTitle>
-              <PlayerSinglePicker players={state.players.filter(p=>allPlayedIds.includes(p.id))}
-                                  selected={flop} onSelect={setFlop}/>
-            </div>
-          </div>
-
-          <div style={{ marginTop: 24, display:'flex', justifyContent:'space-between' }}>
-            <Button variant="ghost" onClick={()=>setStep(2)}>← Voltar</Button>
             <Button variant="accent" onClick={save} disabled={!canSave}>
               Salvar partida ✓
             </Button>
@@ -217,14 +203,14 @@ function ScoreSide({ team, side }) {
                     flexDirection: side==='left' ? 'row-reverse':'row',
                     justifyContent: side==='left' ? 'flex-start':'flex-start' }}>
         <div style={{
-          width: 14, height: 14, borderRadius: 3,
+          width: 14, height: 14, borderRadius: 3, flexShrink: 0,
           background: team.color,
           border: team.color === '#f4f1ea' ? '1px solid var(--line-2)' : 'none',
         }}/>
-        <div style={{
+        <div className="team-name" style={{
           fontFamily: 'var(--font-head)', fontWeight: 'var(--head-weight)',
           textTransform: 'var(--head-transform)', letterSpacing: 'var(--head-tracking)',
-          fontSize: 18,
+          fontSize: 18, minWidth: 0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
         }}>{team.name}</div>
       </div>
     </div>
@@ -241,7 +227,7 @@ function GoalEditor({ team, side, playerById, onAddGoal }) {
     setScorer(''); setAssister('');
   };
   const selectStyle = {
-    width:'100%', height: 38, padding:'0 12px',
+    width:'100%', height: 40, padding:'0 12px',
     background:'var(--surface-2)', border:'1px solid var(--line)',
     borderRadius:'var(--radius)', color:'var(--fg)',
     fontFamily:'var(--font-body)', fontSize: 14, outline:'none',
@@ -253,9 +239,11 @@ function GoalEditor({ team, side, playerById, onAddGoal }) {
         textTransform:'var(--head-transform)', letterSpacing:'var(--head-tracking)',
         fontSize: 16, marginBottom: 10, display:'flex', alignItems:'center', gap: 8,
       }}>
-        <div style={{ width:10, height:10, borderRadius:2, background:team.color,
+        <div style={{ width:10, height:10, borderRadius:2, background:team.color, flexShrink: 0,
                       border: team.color==='#f4f1ea' ? '1px solid var(--line-2)':'none' }}/>
-        Gol do {team.name}
+        <span style={{ minWidth: 0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
+          Gol do {team.name}
+        </span>
       </div>
       <div style={{ display:'flex', flexDirection:'column', gap: 8 }}>
         <select value={scorer} onChange={e=>setScorer(e.target.value)} style={selectStyle}>
@@ -274,30 +262,6 @@ function GoalEditor({ team, side, playerById, onAddGoal }) {
   );
 }
 
-function PlayerSinglePicker({ players, selected, onSelect }) {
-  return (
-    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap: 6 }}>
-      {players.map(p => {
-        const on = selected === p.id;
-        return (
-          <button key={p.id} type="button" onClick={()=>onSelect(on ? null : p.id)}
-                  style={{
-                    display:'flex', alignItems:'center', gap: 10,
-                    padding: '8px 10px', borderRadius: 'var(--radius)',
-                    border: '1px solid ' + (on ? 'var(--accent)' : 'var(--line)'),
-                    background: on ? 'rgba(245,208,74,0.18)' : 'var(--surface-2)',
-                    color: 'var(--fg)', fontFamily: 'var(--font-body)',
-                    fontSize: 13, cursor: 'pointer', textAlign:'left',
-                  }}>
-            <Avatar player={p} size={26}/>
-            <span style={{ flex: 1 }}>{p.name}</span>
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
 // ── Players Screen ──────────────────────────────────────────────────────────
 
 function Players({ state, stats, onSelectPlayer, onAddPlayer }) {
@@ -306,8 +270,8 @@ function Players({ state, stats, onSelectPlayer, onAddPlayer }) {
   const sorted = [...state.players].sort((a,b) => a.name.localeCompare(b.name));
   return (
     <div style={{ display:'flex', flexDirection:'column', gap: 24 }}>
-      <div style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between' }}>
-        <h1 style={{
+      <div className="mobile-row" style={{ display:'flex', alignItems:'baseline', justifyContent:'space-between', gap: 12 }}>
+        <h1 className="h1-mobile" style={{
           fontFamily: 'var(--font-head)', fontWeight: 'var(--head-weight)',
           textTransform: 'var(--head-transform)', letterSpacing: 'var(--head-tracking)',
           fontSize: 36, margin: 0, lineHeight: 1.1,
@@ -318,8 +282,8 @@ function Players({ state, stats, onSelectPlayer, onAddPlayer }) {
       </div>
 
       {adding && (
-        <Card>
-          <div style={{ display:'flex', gap: 10 }}>
+        <Card className="card-mobile">
+          <div className="mobile-row" style={{ display:'flex', gap: 10 }}>
             <input value={name} onChange={e=>setName(e.target.value)}
                    placeholder="Nome do jogador (ex: Ronaldinho)"
                    onKeyDown={(e) => {
@@ -329,36 +293,46 @@ function Players({ state, stats, onSelectPlayer, onAddPlayer }) {
                    }}
                    autoFocus
                    style={{
-                     flex: 1, height: 38, padding:'0 12px',
+                     flex: 1, minWidth: 0, height: 40, padding:'0 12px',
                      background:'var(--surface-2)', border:'1px solid var(--line)',
                      borderRadius:'var(--radius)', color:'var(--fg)',
                      fontFamily:'var(--font-body)', fontSize: 14, outline:'none',
                    }}/>
-            <Button onClick={()=>{ if (name.trim()) { onAddPlayer(name.trim()); setName(''); setAdding(false); } }}>
-              Adicionar
-            </Button>
-            <Button variant="ghost" onClick={()=>{ setAdding(false); setName(''); }}>Cancelar</Button>
+            <div style={{ display:'flex', gap: 8 }}>
+              <Button onClick={()=>{ if (name.trim()) { onAddPlayer(name.trim()); setName(''); setAdding(false); } }}>
+                Adicionar
+              </Button>
+              <Button variant="ghost" onClick={()=>{ setAdding(false); setName(''); }}>Cancelar</Button>
+            </div>
           </div>
         </Card>
       )}
 
-      <div style={{ display:'grid', gridTemplateColumns:'repeat(3, 1fr)', gap: 16 }}>
+      {sorted.length === 0 && !adding && (
+        <Card className="card-mobile">
+          <div style={{ textAlign:'center', padding: 30, color:'var(--fg-2)' }}>
+            Nenhum jogador cadastrado. Clique em <b>Adicionar</b> pra começar.
+          </div>
+        </Card>
+      )}
+
+      <div className="grid-3">
         {sorted.map(p => {
           const s = stats[p.id] || {};
           return (
-            <Card key={p.id} onClick={()=>onSelectPlayer(p.id)}>
+            <Card key={p.id} className="card-mobile" onClick={()=>onSelectPlayer(p.id)}>
               <div style={{ display:'flex', alignItems:'center', gap: 14 }}>
                 <Avatar player={p} size={48}/>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ fontWeight: 600, fontSize: 16, whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis' }}>{p.name}</div>
-                  <div style={{ fontSize: 12, color:'var(--fg-3)' }}>{s.played || 0} jogos · {s.points || 0} pts</div>
+                  <div style={{ fontSize: 12, color:'var(--fg-3)' }}>{s.played || 0} jogos</div>
                 </div>
               </div>
               <div style={{ display:'flex', gap: 14, marginTop: 14, paddingTop: 14, borderTop:'1px solid var(--line)' }}>
                 <MiniStat label="Gols" value={s.goals||0}/>
                 <MiniStat label="Ass" value={s.assists||0}/>
                 <MiniStat label="V" value={s.wins||0} color="var(--win)"/>
-                <MiniStat label="★" value={s.mvps||0} color="var(--accent)"/>
+                <MiniStat label="D" value={s.losses||0} color="var(--loss)"/>
               </div>
             </Card>
           );
