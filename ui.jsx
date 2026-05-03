@@ -186,7 +186,75 @@ function PlayerPicker({ players, selected, onToggle, exclude = [], placeholder='
   );
 }
 
+function Spinner({ size = 24 }) {
+  return (
+    <div style={{
+      width: size, height: size,
+      border: '2px solid var(--line)',
+      borderTopColor: 'var(--accent)',
+      borderRadius: '50%',
+      animation: 'fdsspin 0.7s linear infinite',
+      display: 'inline-block',
+    }}/>
+  );
+}
+
+function FullPageSpinner({ label = 'Carregando...' }) {
+  return (
+    <div style={{
+      minHeight: '50vh', display:'flex', flexDirection:'column',
+      alignItems:'center', justifyContent:'center', gap: 14, color:'var(--fg-3)',
+    }}>
+      <Spinner size={32}/>
+      <div style={{ fontSize: 13 }}>{label}</div>
+      <style>{`@keyframes fdsspin { to { transform: rotate(360deg); } }`}</style>
+    </div>
+  );
+}
+
+// Toast: estilo "fila simples" via window.showToast()
+const ToastHost = (() => {
+  let pushFn = null;
+  function ToastContainer() {
+    const [toasts, setToasts] = React.useState([]);
+    React.useEffect(() => {
+      pushFn = (t) => {
+        const id = Math.random().toString(36).slice(2);
+        setToasts(ts => [...ts, { id, ...t }]);
+        setTimeout(() => setToasts(ts => ts.filter(x => x.id !== id)), t.ms || 4000);
+      };
+      return () => { pushFn = null; };
+    }, []);
+    return (
+      <div style={{
+        position: 'fixed', bottom: 80, left: 0, right: 0,
+        display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8,
+        zIndex: 100, pointerEvents: 'none', padding: '0 16px',
+      }}>
+        {toasts.map(t => (
+          <div key={t.id} style={{
+            padding: '10px 14px', borderRadius: 'var(--radius)',
+            background: t.tone === 'error' ? 'var(--loss)' : 'var(--fg)',
+            color: t.tone === 'error' ? '#fff' : 'var(--bg)',
+            fontSize: 13, fontWeight: 500,
+            boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+            maxWidth: 480, pointerEvents: 'auto',
+          }}>{t.message}</div>
+        ))}
+      </div>
+    );
+  }
+  function showToast(message, opts = {}) {
+    if (pushFn) pushFn({ message, ...opts });
+  }
+  return { ToastContainer, showToast };
+})();
+
+const ToastContainer = ToastHost.ToastContainer;
+const showToast = ToastHost.showToast;
+
 Object.assign(window, {
   Avatar, PlayerChip, Card, Stat, SectionTitle, Badge, Button, Icon,
   PlayerPicker, colorFor, initialsOf,
+  Spinner, FullPageSpinner, ToastContainer, showToast,
 });
