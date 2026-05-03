@@ -83,6 +83,8 @@ alter table public.profiles enable row level security;
 alter table public.matches  enable row level security;
 
 -- profiles: leitura pública
+-- Nota: não há policy de INSERT por design — profiles são criados
+-- exclusivamente pelo trigger handle_new_user no signup.
 drop policy if exists "profiles_select_all" on public.profiles;
 create policy "profiles_select_all" on public.profiles
   for select using (true);
