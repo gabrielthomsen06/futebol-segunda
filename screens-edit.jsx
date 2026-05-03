@@ -32,15 +32,24 @@ function NewMatch({ state, onSave, onCancel }) {
 
   const canStep2 = teamA.players.length > 0 && teamB.players.length > 0;
   const canSave = canStep2;
+  const [saving, setSaving] = React.useState(false);
 
-  const save = () => {
-    const m = {
-      id: newId('m'), date,
-      teamA: { ...teamA, players: [...teamA.players] },
-      teamB: { ...teamB, players: [...teamB.players] },
-      events: events.map(e => ({ type: e.type, player: e.player, assist: e.assist, team: e.team })),
-    };
-    onSave(m);
+  const save = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      const m = {
+        date,
+        teamA: { ...teamA, players: [...teamA.players] },
+        teamB: { ...teamB, players: [...teamB.players] },
+        events: events.map(e => ({ type: e.type, player: e.player, assist: e.assist, team: e.team })),
+      };
+      await onSave(m);
+    } catch (err) {
+      // toast já é mostrado pelo addMatch no app.jsx
+    } finally {
+      setSaving(false);
+    }
   };
 
   const noPlayers = state.players.length === 0;
@@ -186,8 +195,8 @@ function NewMatch({ state, onSave, onCancel }) {
 
           <div className="mobile-row" style={{ marginTop: 24, display:'flex', justifyContent:'space-between', gap: 12 }}>
             <Button variant="ghost" onClick={()=>setStep(1)}>← Voltar</Button>
-            <Button variant="accent" onClick={save} disabled={!canSave}>
-              Salvar partida ✓
+            <Button variant="accent" onClick={save} disabled={!canSave || saving}>
+              {saving ? 'Salvando…' : 'Salvar partida ✓'}
             </Button>
           </div>
         </Card>
@@ -264,9 +273,7 @@ function GoalEditor({ team, side, playerById, onAddGoal }) {
 
 // ── Players Screen ──────────────────────────────────────────────────────────
 
-function Players({ state, stats, onSelectPlayer, onAddPlayer }) {
-  const [adding, setAdding] = React.useState(false);
-  const [name, setName] = React.useState('');
+function Players({ state, stats, onSelectPlayer }) {
   const sorted = [...state.players].sort((a,b) => a.name.localeCompare(b.name));
   return (
     <div style={{ display:'flex', flexDirection:'column', gap: 24 }}>
@@ -276,42 +283,12 @@ function Players({ state, stats, onSelectPlayer, onAddPlayer }) {
           textTransform: 'var(--head-transform)', letterSpacing: 'var(--head-tracking)',
           fontSize: 36, margin: 0, lineHeight: 1.1,
         }}>Jogadores <span style={{ color:'var(--fg-3)' }}>· {state.players.length}</span></h1>
-        <Button variant="accent" onClick={()=>setAdding(a=>!a)}>
-          <Icon.Plus width="16" height="16"/> Adicionar
-        </Button>
       </div>
 
-      {adding && (
-        <Card className="card-mobile">
-          <div className="mobile-row" style={{ display:'flex', gap: 10 }}>
-            <input value={name} onChange={e=>setName(e.target.value)}
-                   placeholder="Nome do jogador (ex: Ronaldinho)"
-                   onKeyDown={(e) => {
-                     if (e.key === 'Enter' && name.trim()) {
-                       onAddPlayer(name.trim()); setName(''); setAdding(false);
-                     }
-                   }}
-                   autoFocus
-                   style={{
-                     flex: 1, minWidth: 0, height: 40, padding:'0 12px',
-                     background:'var(--surface-2)', border:'1px solid var(--line)',
-                     borderRadius:'var(--radius)', color:'var(--fg)',
-                     fontFamily:'var(--font-body)', fontSize: 14, outline:'none',
-                   }}/>
-            <div style={{ display:'flex', gap: 8 }}>
-              <Button onClick={()=>{ if (name.trim()) { onAddPlayer(name.trim()); setName(''); setAdding(false); } }}>
-                Adicionar
-              </Button>
-              <Button variant="ghost" onClick={()=>{ setAdding(false); setName(''); }}>Cancelar</Button>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      {sorted.length === 0 && !adding && (
+      {sorted.length === 0 && (
         <Card className="card-mobile">
           <div style={{ textAlign:'center', padding: 30, color:'var(--fg-2)' }}>
-            Nenhum jogador cadastrado. Clique em <b>Adicionar</b> pra começar.
+            Ninguém cadastrado ainda. Cada jogador faz o próprio cadastro pelo botão <b>Entrar</b>.
           </div>
         </Card>
       )}
