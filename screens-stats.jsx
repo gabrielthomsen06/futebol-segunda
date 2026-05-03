@@ -396,7 +396,7 @@ function Td({ children, right, mono, bold, color }) {
 
 // ── History ────────────────────────────────────────────────────────────────
 
-function History({ state, onSelectMatch, onNavigate }) {
+function History({ state, onSelectMatch, onNavigate, isAdmin }) {
   const playerById = Object.fromEntries(state.players.map(p=>[p.id,p]));
   const matches = [...state.matches].reverse();
   return (
@@ -407,13 +407,15 @@ function History({ state, onSelectMatch, onNavigate }) {
           textTransform: 'var(--head-transform)', letterSpacing: 'var(--head-tracking)',
           fontSize: 36, margin: 0, lineHeight: 1.1,
         }}>Histórico</h1>
-        <Button variant="accent" onClick={()=>onNavigate('new-match')}>
-          <Icon.Plus width="16" height="16"/> Nova partida
-        </Button>
+        {isAdmin && (
+          <Button variant="accent" onClick={()=>onNavigate('new-match')}>
+            <Icon.Plus width="16" height="16"/> Nova partida
+          </Button>
+        )}
       </div>
       {matches.length === 0 && (
         <Card className="card-mobile"><div style={{ textAlign:'center', padding: 30, color:'var(--fg-2)' }}>
-          Nenhuma partida ainda. Bora começar!
+          {isAdmin ? 'Nenhuma partida ainda. Bora começar!' : 'Nenhuma partida registrada ainda.'}
         </div></Card>
       )}
       {matches.map(m => (
@@ -427,7 +429,7 @@ function History({ state, onSelectMatch, onNavigate }) {
 
 // ── Match Detail ───────────────────────────────────────────────────────────
 
-function MatchDetail({ match, state, onBack, onDelete }) {
+function MatchDetail({ match, state, onBack, onDelete, isAdmin }) {
   const playerById = Object.fromEntries(state.players.map(p=>[p.id,p]));
   return (
     <div style={{ display:'flex', flexDirection:'column', gap: 24 }}>
@@ -436,9 +438,11 @@ function MatchDetail({ match, state, onBack, onDelete }) {
           background:'transparent', border: 0, color:'var(--fg-2)',
           fontFamily:'var(--font-body)', fontSize: 13, cursor:'pointer', padding: 0,
         }}>← voltar</button>
-        <Button variant="danger" onClick={()=>{
-          if (confirm('Apagar esta partida?')) onDelete(match.id);
-        }}>Apagar partida</Button>
+        {isAdmin && (
+          <Button variant="danger" onClick={()=>{
+            if (confirm('Apagar esta partida?')) onDelete(match.id);
+          }}>Apagar partida</Button>
+        )}
       </div>
       <Card className="card-mobile">
         <MatchScoreboard match={match} playerById={playerById}/>
@@ -449,7 +453,7 @@ function MatchDetail({ match, state, onBack, onDelete }) {
 
 // ── Player Profile ─────────────────────────────────────────────────────────
 
-function PlayerProfile({ playerId, state, stats, onBack, onSelectMatch, onUpdatePlayer, onDeletePlayer }) {
+function PlayerProfile({ playerId, state, stats, onBack, onSelectMatch, onUpdatePlayer, onDeletePlayer, isAdmin, currentUserId }) {
   const player = state.players.find(p=>p.id===playerId);
   const s = stats[playerId];
   const playerById = Object.fromEntries(state.players.map(p=>[p.id,p]));
@@ -457,6 +461,8 @@ function PlayerProfile({ playerId, state, stats, onBack, onSelectMatch, onUpdate
     m.teamA.players.includes(playerId) || m.teamB.players.includes(playerId));
   const allRanked = Object.values(stats).sort((a,b)=>b.goals-a.goals);
   const rankPos = allRanked.findIndex(x => x.id === playerId) + 1;
+  const isOwner = currentUserId && currentUserId === playerId;
+  const canEdit = isAdmin || isOwner;
 
   if (!player || !s) return <div>Jogador não encontrado</div>;
 
@@ -484,10 +490,12 @@ function PlayerProfile({ playerId, state, stats, onBack, onSelectMatch, onUpdate
             }}>{player.name}</h1>
             {player.nick && <div style={{ color:'var(--fg-2)', marginTop: 6, fontStyle:'italic' }}>"{player.nick}"</div>}
           </div>
-          <Button variant="ghost" onClick={()=>{
-            const newName = prompt('Nome do jogador:', player.name);
-            if (newName && newName.trim()) onUpdatePlayer(player.id, { name: newName.trim() });
-          }}>Editar</Button>
+          {canEdit && (
+            <Button variant="ghost" onClick={()=>{
+              const newName = prompt('Nome do jogador:', player.name);
+              if (newName && newName.trim()) onUpdatePlayer(player.id, { name: newName.trim() });
+            }}>Editar</Button>
+          )}
         </div>
 
         <div className="grid-stats-6" style={{
@@ -542,13 +550,15 @@ function PlayerProfile({ playerId, state, stats, onBack, onSelectMatch, onUpdate
         </div>
       </Card>
 
-      <div>
-        <Button variant="danger" onClick={()=>{
-          if (confirm(`Remover ${player.name}? Os registros em partidas antigas permanecem.`)) {
-            onDeletePlayer(player.id);
-          }
-        }}>Remover jogador</Button>
-      </div>
+      {isAdmin && (
+        <div>
+          <Button variant="danger" onClick={()=>{
+            if (confirm(`Remover ${player.name}? Os registros em partidas antigas permanecem.`)) {
+              onDeletePlayer(player.id);
+            }
+          }}>Remover jogador</Button>
+        </div>
+      )}
     </div>
   );
 }
