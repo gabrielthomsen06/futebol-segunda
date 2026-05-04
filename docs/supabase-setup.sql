@@ -64,7 +64,9 @@ language plpgsql
 security definer
 as $$
 begin
+  -- auth.uid() é null quando rodando como service_role/postgres (ex: SQL Editor) — libera nesse caso
   if old.is_admin is distinct from new.is_admin
+     and auth.uid() is not null
      and not public.is_admin(auth.uid()) then
     raise exception 'Only admins can change is_admin';
   end if;
