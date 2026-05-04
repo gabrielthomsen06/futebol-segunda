@@ -117,7 +117,16 @@ function AuthScreen({ auth, onCancel }) {
       }
       setSent(true);
     } catch (err) {
-      setError(err.message || 'Algo deu errado. Tenta de novo.');
+      const msg = (err.message || '').toLowerCase();
+      if (msg.includes('rate limit') || msg.includes('email rate')) {
+        setError('Muitos pedidos para este email. Aguarde alguns minutos e tente novamente.');
+      } else if (msg.includes('user already registered') || msg.includes('already registered')) {
+        setError('Este email já está cadastrado. Use a aba "Entrar" para acessar.');
+      } else if (msg.includes('invalid email')) {
+        setError('Email inválido. Verifique o endereço digitado.');
+      } else {
+        setError(err.message || 'Algo deu errado. Tenta de novo.');
+      }
     } finally {
       setSubmitting(false);
     }
