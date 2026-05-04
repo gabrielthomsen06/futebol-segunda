@@ -1,38 +1,8 @@
-// data.jsx — Dados, persistência e helpers do app
+// data.jsx — Helpers de cálculo e formatação (sem persistência, banco no Supabase)
 
-const STORAGE_KEY = 'fds_v2';
-
-const SEED = {
-  players: [],
-  matches: [],
-  seasonStart: new Date().toISOString().slice(0, 10),
-};
-
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return SEED;
-    const parsed = JSON.parse(raw);
-    if (!parsed.players || !parsed.matches) return SEED;
-    return parsed;
-  } catch {
-    return SEED;
-  }
-}
-
-function saveState(s) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch {}
-}
-
-function resetState() {
-  localStorage.removeItem(STORAGE_KEY);
-}
-
-// ── Aggregations ────────────────────────────────────────────────────────────
-
-function computeStats(state) {
+function computeStats(players, matches) {
   const stats = {};
-  for (const p of state.players) {
+  for (const p of players) {
     stats[p.id] = {
       id: p.id, name: p.name, nick: p.nick,
       goals: 0, assists: 0,
@@ -41,7 +11,7 @@ function computeStats(state) {
     };
   }
 
-  for (const m of state.matches) {
+  for (const m of matches) {
     const winA = m.teamA.score > m.teamB.score;
     const winB = m.teamB.score > m.teamA.score;
     const draw = m.teamA.score === m.teamB.score;
@@ -71,7 +41,7 @@ function computeStats(state) {
 
   for (const id in stats) {
     const s = stats[id];
-    s.attendance = state.matches.length ? s.played / state.matches.length : 0;
+    s.attendance = matches.length ? s.played / matches.length : 0;
   }
 
   return stats;
@@ -87,11 +57,4 @@ function fmtDateLong(iso) {
   return d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
 }
 
-function newId(prefix) {
-  return prefix + '_' + Math.random().toString(36).slice(2, 8);
-}
-
-Object.assign(window, {
-  loadState, saveState, resetState, computeStats,
-  fmtDate, fmtDateLong, newId, SEED,
-});
+Object.assign(window, { computeStats, fmtDate, fmtDateLong });
