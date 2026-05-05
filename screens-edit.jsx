@@ -234,6 +234,81 @@ function NewMatch({ state, onSave, onCancel }) {
   );
 }
 
+function EditMatchEvents({ match, state, onSave, onCancel }) {
+  const playerById = Object.fromEntries(state.players.map(p=>[p.id,p]));
+
+  // Re-deriva score dos events ao montar pra evitar dessincronia se o
+  // banco tiver score divergente do número de eventos (defensivo).
+  const initialEvents = (match.events || []).map(e => ({...e}));
+  const computeScore = (evs, side) => evs.filter(e => e.team === side).length;
+
+  const [teamA, setTeamA] = React.useState({
+    ...match.teamA,
+    players: [...(match.teamA?.players || [])],
+    score: computeScore(initialEvents, 'A'),
+  });
+  const [teamB, setTeamB] = React.useState({
+    ...match.teamB,
+    players: [...(match.teamB?.players || [])],
+    score: computeScore(initialEvents, 'B'),
+  });
+  const [events, setEvents] = React.useState(initialEvents);
+  const [saving, setSaving] = React.useState(false);
+
+  const addEvent = (team, pid, assistId) => {
+    const next = applyAddGoal(teamA, teamB, events, team, pid, assistId);
+    setTeamA(next.teamA); setTeamB(next.teamB); setEvents(next.events);
+  };
+  const removeEvent = (idx) => {
+    const next = applyRemoveGoal(teamA, teamB, events, idx);
+    setTeamA(next.teamA); setTeamB(next.teamB); setEvents(next.events);
+  };
+
+  const save = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await onSave({
+        team_a: { ...teamA, players: [...teamA.players] },
+        team_b: { ...teamB, players: [...teamB.players] },
+        events: events.map(e => ({ type: e.type, player: e.player, assist: e.assist, team: e.team })),
+      });
+    } catch (err) {
+      // toast já é mostrado pelo updateMatchLocal no app.jsx
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap: 24 }}>
+      <button onClick={onCancel} style={{
+        background:'transparent', border: 0, color:'var(--fg-2)',
+        fontFamily:'var(--font-body)', fontSize: 13, cursor:'pointer', padding: 0,
+        alignSelf:'flex-start',
+      }}>← cancelar</button>
+
+      <h1 className="h1-mobile" style={{
+        fontFamily: 'var(--font-head)', fontWeight: 'var(--head-weight)',
+        textTransform: 'var(--head-transform)', letterSpacing: 'var(--head-tracking)',
+        fontSize: 36, margin: 0, lineHeight: 1.1,
+      }}>Editar gols</h1>
+
+      <Card className="card-mobile">
+        <GoalsForm teamA={teamA} teamB={teamB} events={events} playerById={playerById}
+                   onAddEvent={addEvent} onRemoveEvent={removeEvent}/>
+
+        <div className="mobile-row" style={{ marginTop: 24, display:'flex', justifyContent:'space-between', gap: 12 }}>
+          <Button variant="ghost" onClick={onCancel}>← Cancelar</Button>
+          <Button variant="accent" onClick={save} disabled={saving}>
+            {saving ? 'Salvando…' : 'Salvar alterações ✓'}
+          </Button>
+        </div>
+      </Card>
+    </div>
+  );
+}
+
 function ScoreSide({ team, side }) {
   return (
     <div style={{ textAlign: side==='left' ? 'right' : 'left' }}>
@@ -360,4 +435,4 @@ function MiniStat({ label, value, color }) {
   );
 }
 
-Object.assign(window, { NewMatch, Players });
+Object.assign(window, { NewMatch, EditMatchEvents, Players });
