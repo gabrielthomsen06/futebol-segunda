@@ -205,9 +205,14 @@ function NewMatch({ state, onSave, onCancel }) {
             <div style={{ fontSize: 13, color:'var(--fg-2)' }}>
               {allPlayedIds.length} escalados · {state.players.length - allPlayedIds.length} de fora
             </div>
-            <Button onClick={()=>setStep(2)} disabled={!canStep2}>
-              Próximo: registrar gols →
-            </Button>
+            <div style={{ display:'flex', gap: 8, flexWrap:'wrap' }}>
+              <Button variant="ghost" onClick={save} disabled={!canStep2 || saving}>
+                {saving ? 'Salvando…' : 'Salvar só os times'}
+              </Button>
+              <Button onClick={()=>setStep(2)} disabled={!canStep2 || saving}>
+                Próximo: registrar gols →
+              </Button>
+            </div>
           </div>
         </Card>
       )}
