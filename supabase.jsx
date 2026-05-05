@@ -82,6 +82,17 @@ async function deleteMatch(id) {
   if (error) throw error;
 }
 
+async function updateMatch(id, patch) {
+  const { data, error } = await supabaseClient
+    .from('matches')
+    .update(patch)
+    .eq('id', id)
+    .select()
+    .single();
+  if (error) throw error;
+  return rowToMatch(data);
+}
+
 // ── Conversores entre shape do banco (snake) e shape do app (camel) ────
 
 function rowToMatch(row) {
@@ -112,3 +123,4 @@ window.deleteProfile = deleteProfile;
 window.fetchMatches = fetchMatches;
 window.createMatch = createMatch;
 window.deleteMatch = deleteMatch;
+window.updateMatch = updateMatch;

@@ -1,5 +1,84 @@
 // screens-edit.jsx — Nova Partida + Jogadores
 
+function applyAddGoal(teamA, teamB, events, team, pid, assistId) {
+  const newEvents = [...events, { type:'goal', player: pid, assist: assistId || null, team }];
+  if (team === 'A') {
+    return { teamA: { ...teamA, score: teamA.score + 1 }, teamB, events: newEvents };
+  }
+  return { teamA, teamB: { ...teamB, score: teamB.score + 1 }, events: newEvents };
+}
+
+function applyRemoveGoal(teamA, teamB, events, idx) {
+  const ev = events[idx];
+  if (!ev) return { teamA, teamB, events };
+  const newEvents = events.filter((_, i) => i !== idx);
+  if (ev.team === 'A') {
+    return { teamA: { ...teamA, score: Math.max(0, teamA.score - 1) }, teamB, events: newEvents };
+  }
+  return { teamA, teamB: { ...teamB, score: Math.max(0, teamB.score - 1) }, events: newEvents };
+}
+
+function GoalsForm({ teamA, teamB, events, playerById, onAddEvent, onRemoveEvent }) {
+  return (
+    <>
+      <div className="scoreboard-grid" style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'center', gap: 16, marginBottom: 24 }}>
+        <ScoreSide team={teamA} side="left"/>
+        <div className="score-mobile" style={{
+          fontFamily:'var(--font-head)', fontWeight:'var(--head-weight)',
+          fontSize: 56, lineHeight: 1, fontVariantNumeric:'tabular-nums',
+          letterSpacing:'var(--head-tracking)', textAlign:'center',
+        }}>
+          {teamA.score}<span style={{ color:'var(--fg-3)', margin:'0 8px' }}>:</span>{teamB.score}
+        </div>
+        <ScoreSide team={teamB} side="right"/>
+      </div>
+
+      <div className="grid-2">
+        <GoalEditor team={teamA} side="A" playerById={playerById}
+                    onAddGoal={(pid, aid)=>onAddEvent('A', pid, aid)}/>
+        <GoalEditor team={teamB} side="B" playerById={playerById}
+                    onAddGoal={(pid, aid)=>onAddEvent('B', pid, aid)}/>
+      </div>
+
+      {events.length > 0 && (
+        <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--line)' }}>
+          <div style={{
+            fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
+            textTransform: 'uppercase', color: 'var(--fg-3)', marginBottom: 10,
+          }}>Gols registrados</div>
+          <div style={{ display:'flex', flexDirection:'column', gap: 4 }}>
+            {events.map((ev, i) => {
+              const p = playerById[ev.player];
+              const a = ev.assist ? playerById[ev.assist] : null;
+              if (!p) return null;
+              return (
+                <div key={i} style={{
+                  display:'flex', alignItems:'center', gap: 10, padding: '8px 12px',
+                  background: 'var(--surface-2)', borderRadius:'var(--radius)',
+                }}>
+                  <span style={{ fontSize: 12, color: 'var(--fg-3)', minWidth: 30 }}>
+                    {ev.team === 'A' ? teamA.name.slice(0,3) : teamB.name.slice(0,3)}
+                  </span>
+                  <span style={{ fontSize: 14 }}>⚽</span>
+                  <span style={{ fontWeight: 500, flex: 1, minWidth: 0,
+                                 overflow:'hidden', textOverflow:'ellipsis' }}>
+                    {p.name}
+                    {a && <span style={{ color: 'var(--fg-3)', fontWeight: 400 }}> ↳ {a.name}</span>}
+                  </span>
+                  <button onClick={()=>onRemoveEvent(i)} style={{
+                    background:'transparent', border:0, color:'var(--fg-3)',
+                    cursor:'pointer', padding: 4,
+                  }}><Icon.X width="14" height="14"/></button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function NewMatch({ state, onSave, onCancel }) {
   const playerById = Object.fromEntries(state.players.map(p=>[p.id,p]));
   const [step, setStep] = React.useState(1); // 1: teams, 2: events
@@ -19,15 +98,12 @@ function NewMatch({ state, onSave, onCancel }) {
   const allPlayedIds = [...teamA.players, ...teamB.players];
 
   const addEvent = (team, pid, assistId) => {
-    setEvents(evs => [...evs, { type:'goal', player: pid, assist: assistId || null, team }]);
-    if (team === 'A') setTeamA(t => ({ ...t, score: t.score + 1 }));
-    else              setTeamB(t => ({ ...t, score: t.score + 1 }));
+    const next = applyAddGoal(teamA, teamB, events, team, pid, assistId);
+    setTeamA(next.teamA); setTeamB(next.teamB); setEvents(next.events);
   };
   const removeEvent = (idx) => {
-    const ev = events[idx];
-    if (ev.team === 'A') setTeamA(t => ({ ...t, score: Math.max(0, t.score - 1) }));
-    else                 setTeamB(t => ({ ...t, score: Math.max(0, t.score - 1) }));
-    setEvents(evs => evs.filter((_,i) => i !== idx));
+    const next = applyRemoveGoal(teamA, teamB, events, idx);
+    setTeamA(next.teamA); setTeamB(next.teamB); setEvents(next.events);
   };
 
   const canStep2 = teamA.players.length > 0 && teamB.players.length > 0;
@@ -129,69 +205,22 @@ function NewMatch({ state, onSave, onCancel }) {
             <div style={{ fontSize: 13, color:'var(--fg-2)' }}>
               {allPlayedIds.length} escalados · {state.players.length - allPlayedIds.length} de fora
             </div>
-            <Button onClick={()=>setStep(2)} disabled={!canStep2}>
-              Próximo: registrar gols →
-            </Button>
+            <div style={{ display:'flex', gap: 8, flexWrap:'wrap' }}>
+              <Button variant="ghost" onClick={save} disabled={!canStep2 || saving}>
+                {saving ? 'Salvando…' : 'Salvar só os times'}
+              </Button>
+              <Button onClick={()=>setStep(2)} disabled={!canStep2 || saving}>
+                Próximo: registrar gols →
+              </Button>
+            </div>
           </div>
         </Card>
       )}
 
       {!noPlayers && step === 2 && (
         <Card className="card-mobile">
-          <div className="scoreboard-grid" style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'center', gap: 16, marginBottom: 24 }}>
-            <ScoreSide team={teamA} side="left"/>
-            <div className="score-mobile" style={{
-              fontFamily:'var(--font-head)', fontWeight:'var(--head-weight)',
-              fontSize: 56, lineHeight: 1, fontVariantNumeric:'tabular-nums',
-              letterSpacing:'var(--head-tracking)', textAlign:'center',
-            }}>
-              {teamA.score}<span style={{ color:'var(--fg-3)', margin:'0 8px' }}>:</span>{teamB.score}
-            </div>
-            <ScoreSide team={teamB} side="right"/>
-          </div>
-
-          <div className="grid-2">
-            <GoalEditor team={teamA} side="A" playerById={playerById}
-                        onAddGoal={(pid, aid)=>addEvent('A', pid, aid)}/>
-            <GoalEditor team={teamB} side="B" playerById={playerById}
-                        onAddGoal={(pid, aid)=>addEvent('B', pid, aid)}/>
-          </div>
-
-          {events.length > 0 && (
-            <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--line)' }}>
-              <div style={{
-                fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
-                textTransform: 'uppercase', color: 'var(--fg-3)', marginBottom: 10,
-              }}>Gols registrados</div>
-              <div style={{ display:'flex', flexDirection:'column', gap: 4 }}>
-                {events.map((ev, i) => {
-                  const p = playerById[ev.player];
-                  const a = ev.assist ? playerById[ev.assist] : null;
-                  if (!p) return null;
-                  return (
-                    <div key={i} style={{
-                      display:'flex', alignItems:'center', gap: 10, padding: '8px 12px',
-                      background: 'var(--surface-2)', borderRadius:'var(--radius)',
-                    }}>
-                      <span style={{ fontSize: 12, color: 'var(--fg-3)', minWidth: 30 }}>
-                        {ev.team === 'A' ? teamA.name.slice(0,3) : teamB.name.slice(0,3)}
-                      </span>
-                      <span style={{ fontSize: 14 }}>⚽</span>
-                      <span style={{ fontWeight: 500, flex: 1, minWidth: 0,
-                                     overflow:'hidden', textOverflow:'ellipsis' }}>
-                        {p.name}
-                        {a && <span style={{ color: 'var(--fg-3)', fontWeight: 400 }}> ↳ {a.name}</span>}
-                      </span>
-                      <button onClick={()=>removeEvent(i)} style={{
-                        background:'transparent', border:0, color:'var(--fg-3)',
-                        cursor:'pointer', padding: 4,
-                      }}><Icon.X width="14" height="14"/></button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          <GoalsForm teamA={teamA} teamB={teamB} events={events} playerById={playerById}
+                     onAddEvent={addEvent} onRemoveEvent={removeEvent}/>
 
           <div className="mobile-row" style={{ marginTop: 24, display:'flex', justifyContent:'space-between', gap: 12 }}>
             <Button variant="ghost" onClick={()=>setStep(1)}>← Voltar</Button>
@@ -201,6 +230,81 @@ function NewMatch({ state, onSave, onCancel }) {
           </div>
         </Card>
       )}
+    </div>
+  );
+}
+
+function EditMatchEvents({ match, state, onSave, onCancel }) {
+  const playerById = Object.fromEntries(state.players.map(p=>[p.id,p]));
+
+  // Re-deriva score dos events ao montar pra evitar dessincronia se o
+  // banco tiver score divergente do número de eventos (defensivo).
+  const initialEvents = (match.events || []).map(e => ({...e}));
+  const computeScore = (evs, side) => evs.filter(e => e.team === side).length;
+
+  const [teamA, setTeamA] = React.useState({
+    ...match.teamA,
+    players: [...(match.teamA?.players || [])],
+    score: computeScore(initialEvents, 'A'),
+  });
+  const [teamB, setTeamB] = React.useState({
+    ...match.teamB,
+    players: [...(match.teamB?.players || [])],
+    score: computeScore(initialEvents, 'B'),
+  });
+  const [events, setEvents] = React.useState(initialEvents);
+  const [saving, setSaving] = React.useState(false);
+
+  const addEvent = (team, pid, assistId) => {
+    const next = applyAddGoal(teamA, teamB, events, team, pid, assistId);
+    setTeamA(next.teamA); setTeamB(next.teamB); setEvents(next.events);
+  };
+  const removeEvent = (idx) => {
+    const next = applyRemoveGoal(teamA, teamB, events, idx);
+    setTeamA(next.teamA); setTeamB(next.teamB); setEvents(next.events);
+  };
+
+  const save = async () => {
+    if (saving) return;
+    setSaving(true);
+    try {
+      await onSave({
+        team_a: { ...teamA, players: [...teamA.players] },
+        team_b: { ...teamB, players: [...teamB.players] },
+        events: events.map(e => ({ type: e.type, player: e.player, assist: e.assist, team: e.team })),
+      });
+    } catch (err) {
+      // toast já é mostrado pelo updateMatchLocal no app.jsx
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div style={{ display:'flex', flexDirection:'column', gap: 24 }}>
+      <button onClick={onCancel} style={{
+        background:'transparent', border: 0, color:'var(--fg-2)',
+        fontFamily:'var(--font-body)', fontSize: 13, cursor:'pointer', padding: 0,
+        alignSelf:'flex-start',
+      }}>← cancelar</button>
+
+      <h1 className="h1-mobile" style={{
+        fontFamily: 'var(--font-head)', fontWeight: 'var(--head-weight)',
+        textTransform: 'var(--head-transform)', letterSpacing: 'var(--head-tracking)',
+        fontSize: 36, margin: 0, lineHeight: 1.1,
+      }}>Editar gols</h1>
+
+      <Card className="card-mobile">
+        <GoalsForm teamA={teamA} teamB={teamB} events={events} playerById={playerById}
+                   onAddEvent={addEvent} onRemoveEvent={removeEvent}/>
+
+        <div className="mobile-row" style={{ marginTop: 24, display:'flex', justifyContent:'space-between', gap: 12 }}>
+          <Button variant="ghost" onClick={onCancel}>← Cancelar</Button>
+          <Button variant="accent" onClick={save} disabled={saving}>
+            {saving ? 'Salvando…' : 'Salvar alterações ✓'}
+          </Button>
+        </div>
+      </Card>
     </div>
   );
 }
@@ -331,4 +435,4 @@ function MiniStat({ label, value, color }) {
   );
 }
 
-Object.assign(window, { NewMatch, Players });
+Object.assign(window, { NewMatch, EditMatchEvents, Players });
