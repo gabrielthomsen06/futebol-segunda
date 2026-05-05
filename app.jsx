@@ -68,6 +68,17 @@ function App() {
     }
   };
 
+  const updateMatchLocal = async (id, patch) => {
+    try {
+      const updated = await updateMatch(id, patch);
+      setMatches(arr => arr.map(m => m.id === id ? updated : m));
+      return updated;
+    } catch (err) {
+      showToast('Erro ao atualizar partida: ' + err.message, { tone: 'error' });
+      throw err;
+    }
+  };
+
   const updatePlayerLocal = async (id, patch) => {
     try {
       const updated = await updateProfile(id, patch);
@@ -102,7 +113,7 @@ function App() {
 
   const isActive = (id) =>
     view.name === id ||
-    (id === 'history' && (view.name === 'match' || view.name === 'new-match')) ||
+    (id === 'history' && (view.name === 'match' || view.name === 'new-match' || view.name === 'edit-match')) ||
     (id === 'players' && view.name === 'player');
 
   // ── Content routing ───────────────────────────────────────────────────
@@ -146,6 +157,19 @@ function App() {
       onBack={()=>nav('history')}
       onDelete={async (id)=>{ await removeMatch(id); nav('history'); }}
       isAdmin={auth.isAdmin}/>;
+  } else if (view.name === 'edit-match') {
+    if (!auth.isAdmin) {
+      content = <AccessDenied onBack={()=>nav('history')}/>;
+    } else {
+      const match = matches.find(m => m.id === view.matchId);
+      if (!match) { setTimeout(()=>nav('history'), 0); content = null; }
+      else content = <EditMatchEvents key={match.id} match={match} state={state}
+        onSave={async (patch)=>{
+          await updateMatchLocal(view.matchId, patch);
+          nav('match', { matchId: view.matchId });
+        }}
+        onCancel={()=>nav('match', { matchId: view.matchId })}/>;
+    }
   } else if (view.name === 'player') {
     content = <PlayerProfile playerId={view.playerId} state={state} stats={stats}
       onBack={()=>nav('rankings')}
