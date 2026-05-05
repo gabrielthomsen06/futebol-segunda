@@ -18,6 +18,67 @@ function applyRemoveGoal(teamA, teamB, events, idx) {
   return { teamA, teamB: { ...teamB, score: Math.max(0, teamB.score - 1) }, events: newEvents };
 }
 
+function GoalsForm({ teamA, teamB, events, playerById, onAddEvent, onRemoveEvent }) {
+  return (
+    <>
+      <div className="scoreboard-grid" style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'center', gap: 16, marginBottom: 24 }}>
+        <ScoreSide team={teamA} side="left"/>
+        <div className="score-mobile" style={{
+          fontFamily:'var(--font-head)', fontWeight:'var(--head-weight)',
+          fontSize: 56, lineHeight: 1, fontVariantNumeric:'tabular-nums',
+          letterSpacing:'var(--head-tracking)', textAlign:'center',
+        }}>
+          {teamA.score}<span style={{ color:'var(--fg-3)', margin:'0 8px' }}>:</span>{teamB.score}
+        </div>
+        <ScoreSide team={teamB} side="right"/>
+      </div>
+
+      <div className="grid-2">
+        <GoalEditor team={teamA} side="A" playerById={playerById}
+                    onAddGoal={(pid, aid)=>onAddEvent('A', pid, aid)}/>
+        <GoalEditor team={teamB} side="B" playerById={playerById}
+                    onAddGoal={(pid, aid)=>onAddEvent('B', pid, aid)}/>
+      </div>
+
+      {events.length > 0 && (
+        <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--line)' }}>
+          <div style={{
+            fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
+            textTransform: 'uppercase', color: 'var(--fg-3)', marginBottom: 10,
+          }}>Gols registrados</div>
+          <div style={{ display:'flex', flexDirection:'column', gap: 4 }}>
+            {events.map((ev, i) => {
+              const p = playerById[ev.player];
+              const a = ev.assist ? playerById[ev.assist] : null;
+              if (!p) return null;
+              return (
+                <div key={i} style={{
+                  display:'flex', alignItems:'center', gap: 10, padding: '8px 12px',
+                  background: 'var(--surface-2)', borderRadius:'var(--radius)',
+                }}>
+                  <span style={{ fontSize: 12, color: 'var(--fg-3)', minWidth: 30 }}>
+                    {ev.team === 'A' ? teamA.name.slice(0,3) : teamB.name.slice(0,3)}
+                  </span>
+                  <span style={{ fontSize: 14 }}>⚽</span>
+                  <span style={{ fontWeight: 500, flex: 1, minWidth: 0,
+                                 overflow:'hidden', textOverflow:'ellipsis' }}>
+                    {p.name}
+                    {a && <span style={{ color: 'var(--fg-3)', fontWeight: 400 }}> ↳ {a.name}</span>}
+                  </span>
+                  <button onClick={()=>onRemoveEvent(i)} style={{
+                    background:'transparent', border:0, color:'var(--fg-3)',
+                    cursor:'pointer', padding: 4,
+                  }}><Icon.X width="14" height="14"/></button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
+
 function NewMatch({ state, onSave, onCancel }) {
   const playerById = Object.fromEntries(state.players.map(p=>[p.id,p]));
   const [step, setStep] = React.useState(1); // 1: teams, 2: events
@@ -153,60 +214,8 @@ function NewMatch({ state, onSave, onCancel }) {
 
       {!noPlayers && step === 2 && (
         <Card className="card-mobile">
-          <div className="scoreboard-grid" style={{ display:'grid', gridTemplateColumns:'1fr auto 1fr', alignItems:'center', gap: 16, marginBottom: 24 }}>
-            <ScoreSide team={teamA} side="left"/>
-            <div className="score-mobile" style={{
-              fontFamily:'var(--font-head)', fontWeight:'var(--head-weight)',
-              fontSize: 56, lineHeight: 1, fontVariantNumeric:'tabular-nums',
-              letterSpacing:'var(--head-tracking)', textAlign:'center',
-            }}>
-              {teamA.score}<span style={{ color:'var(--fg-3)', margin:'0 8px' }}>:</span>{teamB.score}
-            </div>
-            <ScoreSide team={teamB} side="right"/>
-          </div>
-
-          <div className="grid-2">
-            <GoalEditor team={teamA} side="A" playerById={playerById}
-                        onAddGoal={(pid, aid)=>addEvent('A', pid, aid)}/>
-            <GoalEditor team={teamB} side="B" playerById={playerById}
-                        onAddGoal={(pid, aid)=>addEvent('B', pid, aid)}/>
-          </div>
-
-          {events.length > 0 && (
-            <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid var(--line)' }}>
-              <div style={{
-                fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
-                textTransform: 'uppercase', color: 'var(--fg-3)', marginBottom: 10,
-              }}>Gols registrados</div>
-              <div style={{ display:'flex', flexDirection:'column', gap: 4 }}>
-                {events.map((ev, i) => {
-                  const p = playerById[ev.player];
-                  const a = ev.assist ? playerById[ev.assist] : null;
-                  if (!p) return null;
-                  return (
-                    <div key={i} style={{
-                      display:'flex', alignItems:'center', gap: 10, padding: '8px 12px',
-                      background: 'var(--surface-2)', borderRadius:'var(--radius)',
-                    }}>
-                      <span style={{ fontSize: 12, color: 'var(--fg-3)', minWidth: 30 }}>
-                        {ev.team === 'A' ? teamA.name.slice(0,3) : teamB.name.slice(0,3)}
-                      </span>
-                      <span style={{ fontSize: 14 }}>⚽</span>
-                      <span style={{ fontWeight: 500, flex: 1, minWidth: 0,
-                                     overflow:'hidden', textOverflow:'ellipsis' }}>
-                        {p.name}
-                        {a && <span style={{ color: 'var(--fg-3)', fontWeight: 400 }}> ↳ {a.name}</span>}
-                      </span>
-                      <button onClick={()=>removeEvent(i)} style={{
-                        background:'transparent', border:0, color:'var(--fg-3)',
-                        cursor:'pointer', padding: 4,
-                      }}><Icon.X width="14" height="14"/></button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+          <GoalsForm teamA={teamA} teamB={teamB} events={events} playerById={playerById}
+                     onAddEvent={addEvent} onRemoveEvent={removeEvent}/>
 
           <div className="mobile-row" style={{ marginTop: 24, display:'flex', justifyContent:'space-between', gap: 12 }}>
             <Button variant="ghost" onClick={()=>setStep(1)}>← Voltar</Button>
