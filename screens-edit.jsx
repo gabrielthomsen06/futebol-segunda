@@ -1,5 +1,23 @@
 // screens-edit.jsx — Nova Partida + Jogadores
 
+function applyAddGoal(teamA, teamB, events, team, pid, assistId) {
+  const newEvents = [...events, { type:'goal', player: pid, assist: assistId || null, team }];
+  if (team === 'A') {
+    return { teamA: { ...teamA, score: teamA.score + 1 }, teamB, events: newEvents };
+  }
+  return { teamA, teamB: { ...teamB, score: teamB.score + 1 }, events: newEvents };
+}
+
+function applyRemoveGoal(teamA, teamB, events, idx) {
+  const ev = events[idx];
+  if (!ev) return { teamA, teamB, events };
+  const newEvents = events.filter((_, i) => i !== idx);
+  if (ev.team === 'A') {
+    return { teamA: { ...teamA, score: Math.max(0, teamA.score - 1) }, teamB, events: newEvents };
+  }
+  return { teamA, teamB: { ...teamB, score: Math.max(0, teamB.score - 1) }, events: newEvents };
+}
+
 function NewMatch({ state, onSave, onCancel }) {
   const playerById = Object.fromEntries(state.players.map(p=>[p.id,p]));
   const [step, setStep] = React.useState(1); // 1: teams, 2: events
@@ -19,15 +37,12 @@ function NewMatch({ state, onSave, onCancel }) {
   const allPlayedIds = [...teamA.players, ...teamB.players];
 
   const addEvent = (team, pid, assistId) => {
-    setEvents(evs => [...evs, { type:'goal', player: pid, assist: assistId || null, team }]);
-    if (team === 'A') setTeamA(t => ({ ...t, score: t.score + 1 }));
-    else              setTeamB(t => ({ ...t, score: t.score + 1 }));
+    const next = applyAddGoal(teamA, teamB, events, team, pid, assistId);
+    setTeamA(next.teamA); setTeamB(next.teamB); setEvents(next.events);
   };
   const removeEvent = (idx) => {
-    const ev = events[idx];
-    if (ev.team === 'A') setTeamA(t => ({ ...t, score: Math.max(0, t.score - 1) }));
-    else                 setTeamB(t => ({ ...t, score: Math.max(0, t.score - 1) }));
-    setEvents(evs => evs.filter((_,i) => i !== idx));
+    const next = applyRemoveGoal(teamA, teamB, events, idx);
+    setTeamA(next.teamA); setTeamB(next.teamB); setEvents(next.events);
   };
 
   const canStep2 = teamA.players.length > 0 && teamB.players.length > 0;
