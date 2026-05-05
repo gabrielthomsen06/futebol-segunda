@@ -429,7 +429,7 @@ function History({ state, onSelectMatch, onNavigate, isAdmin }) {
 
 // ── Match Detail ───────────────────────────────────────────────────────────
 
-function MatchDetail({ match, state, onBack, onDelete, isAdmin }) {
+function MatchDetail({ match, state, onBack, onDelete, onEdit, isAdmin }) {
   const playerById = Object.fromEntries(state.players.map(p=>[p.id,p]));
   return (
     <div style={{ display:'flex', flexDirection:'column', gap: 24 }}>
@@ -439,9 +439,14 @@ function MatchDetail({ match, state, onBack, onDelete, isAdmin }) {
           fontFamily:'var(--font-body)', fontSize: 13, cursor:'pointer', padding: 0,
         }}>← voltar</button>
         {isAdmin && (
-          <Button variant="danger" onClick={()=>{
-            if (confirm('Apagar esta partida?')) onDelete(match.id);
-          }}>Apagar partida</Button>
+          <div style={{ display:'flex', gap: 8, flexWrap:'wrap' }}>
+            <Button variant="accent" onClick={()=>onEdit(match.id)}>
+              Adicionar/editar gols
+            </Button>
+            <Button variant="danger" onClick={()=>{
+              if (confirm('Apagar esta partida?')) onDelete(match.id);
+            }}>Apagar partida</Button>
+          </div>
         )}
       </div>
       <Card className="card-mobile">

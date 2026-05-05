@@ -156,6 +156,7 @@ function App() {
     else content = <MatchDetail match={match} state={state}
       onBack={()=>nav('history')}
       onDelete={async (id)=>{ await removeMatch(id); nav('history'); }}
+      onEdit={(id)=>nav('edit-match', { matchId: id })}
       isAdmin={auth.isAdmin}/>;
   } else if (view.name === 'edit-match') {
     if (!auth.isAdmin) {
