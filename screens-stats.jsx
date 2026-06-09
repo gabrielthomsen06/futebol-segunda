@@ -5,8 +5,11 @@ function Dashboard({ state, stats, onNavigate, onSelectPlayer, onSelectMatch }) 
   const playerById = Object.fromEntries(players.map(p => [p.id, p]));
   const matches = state.matches;
   const lastMatch = matches[matches.length - 1];
-  const totalGoals = matches.reduce((s,m)=>s+m.teamA.score+m.teamB.score,0);
-  const avgGoals = matches.length ? (totalGoals/matches.length).toFixed(1) : '0';
+  // "Rodadas disputadas", gols e média/jogo contam só partidas finalizadas.
+  // Partidas agendadas (played=false) ainda aparecem como "última rodada".
+  const playedMatches = matches.filter(m => m.played);
+  const totalGoals = playedMatches.reduce((s,m)=>s+m.teamA.score+m.teamB.score,0);
+  const avgGoals = playedMatches.length ? (totalGoals/playedMatches.length).toFixed(1) : '0';
 
   const sortedByGoals = Object.values(stats).sort((a,b)=>b.goals-a.goals).slice(0,5);
   const sortedByAssists = Object.values(stats).sort((a,b)=>b.assists-a.assists).slice(0,5);
@@ -30,13 +33,13 @@ function Dashboard({ state, stats, onNavigate, onSelectPlayer, onSelectMatch }) 
               fontSize: 48, margin: 0, lineHeight: 1.05, whiteSpace: 'nowrap',
             }}>Futebol de Segunda</h1>
             <div style={{ marginTop: 10, color: 'var(--fg-2)', fontSize: 14 }}>
-              {matches.length} {matches.length === 1 ? 'rodada disputada' : 'rodadas disputadas'} · {players.length} jogadores ativos
+              {playedMatches.length} {playedMatches.length === 1 ? 'rodada disputada' : 'rodadas disputadas'} · {players.length} jogadores ativos
             </div>
           </div>
           <div className="grid-4" style={{
             paddingTop: 22, borderTop: '1px solid var(--line)',
           }}>
-            <Stat label="Rodadas" value={matches.length} />
+            <Stat label="Rodadas" value={playedMatches.length} />
             <Stat label="Gols" value={totalGoals} />
             <Stat label="Média/jogo" value={avgGoals} />
             <Stat label="Jogadores" value={players.length} />
@@ -148,8 +151,9 @@ function MiniLeaderboard({ title, data, unit, keyName, playerById, onSelectPlaye
 }
 
 function MatchScoreboard({ match, playerById, compact = false }) {
-  const winA = match.teamA.score > match.teamB.score;
-  const winB = match.teamB.score > match.teamA.score;
+  const pending = !match.played;
+  const winA = !pending && match.teamA.score > match.teamB.score;
+  const winB = !pending && match.teamB.score > match.teamA.score;
   return (
     <div>
       <div style={{
@@ -163,13 +167,21 @@ function MatchScoreboard({ match, playerById, compact = false }) {
       }}>
         <TeamCol team={match.teamA} won={winA} align="right" playerById={playerById} compact={compact}/>
         <div style={{ textAlign:'center' }}>
-          <div className="score-mobile" style={{
-            fontFamily:'var(--font-head)', fontWeight: 'var(--head-weight)',
-            fontSize: 56, lineHeight: 1, fontVariantNumeric:'tabular-nums',
-            letterSpacing: 'var(--head-tracking)',
-          }}>
-            {match.teamA.score}<span style={{ color:'var(--fg-3)', margin:'0 8px' }}>:</span>{match.teamB.score}
-          </div>
+          {pending ? (
+            <div style={{
+              fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
+              textTransform: 'uppercase', color: 'var(--accent)',
+              lineHeight: 1.3, padding: '0 4px',
+            }}>Partida irá<br/>ocorrer em breve</div>
+          ) : (
+            <div className="score-mobile" style={{
+              fontFamily:'var(--font-head)', fontWeight: 'var(--head-weight)',
+              fontSize: 56, lineHeight: 1, fontVariantNumeric:'tabular-nums',
+              letterSpacing: 'var(--head-tracking)',
+            }}>
+              {match.teamA.score}<span style={{ color:'var(--fg-3)', margin:'0 8px' }}>:</span>{match.teamB.score}
+            </div>
+          )}
         </div>
         <TeamCol team={match.teamB} won={winB} align="left" playerById={playerById} compact={compact}/>
       </div>
@@ -441,7 +453,7 @@ function MatchDetail({ match, state, onBack, onDelete, onEdit, isAdmin }) {
         {isAdmin && (
           <div style={{ display:'flex', gap: 8, flexWrap:'wrap' }}>
             <Button variant="accent" onClick={()=>onEdit(match.id)}>
-              Adicionar/editar gols
+              Editar partida
             </Button>
             <Button variant="danger" onClick={()=>{
               if (confirm('Apagar esta partida?')) onDelete(match.id);
