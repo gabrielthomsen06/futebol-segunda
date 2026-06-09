@@ -57,7 +57,7 @@ async function deleteProfile(id) {
 async function fetchMatches() {
   const { data, error } = await supabaseClient
     .from('matches')
-    .select('id, date, team_a, team_b, events, created_at')
+    .select('id, date, team_a, team_b, events, played, created_at')
     .order('date', { ascending: true });
   if (error) throw error;
   return (data || []).map(rowToMatch);
@@ -102,6 +102,7 @@ function rowToMatch(row) {
     teamA: row.team_a,
     teamB: row.team_b,
     events: row.events || [],
+    played: row.played ?? false,
   };
 }
 
@@ -112,6 +113,7 @@ function matchToRow(m) {
     team_a: m.teamA,
     team_b: m.teamB,
     events: m.events || [],
+    played: m.played ?? false,
   };
 }
 

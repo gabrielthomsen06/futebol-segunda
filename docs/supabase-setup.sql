@@ -19,9 +19,16 @@ create table if not exists public.matches (
   team_a      jsonb not null,
   team_b      jsonb not null,
   events      jsonb not null default '[]',
+  played      boolean not null default false,
   created_at  timestamptz not null default now(),
   created_by  uuid references auth.users(id)
 );
+
+-- played = false → partida agendada ("vai ocorrer em breve"), não conta nos stats.
+-- played = true  → jogo aconteceu (resultado final, inclusive 0×0 real).
+-- Migração pra bancos já existentes:
+--   alter table public.matches add column if not exists played boolean not null default false;
+--   update public.matches set played = true where jsonb_array_length(events) > 0;
 
 -- 2. FUNÇÃO is_admin ------------------------------------------
 

@@ -8,6 +8,11 @@ function applyAddGoal(teamA, teamB, events, team, pid, assistId) {
   return { teamA, teamB: { ...teamB, score: teamB.score + 1 }, events: newEvents };
 }
 
+// Jogador tem gol ou assistência registrado nestes eventos?
+function hasEvents(events, pid) {
+  return events.some(e => e.player === pid || e.assist === pid);
+}
+
 function applyRemoveGoal(teamA, teamB, events, idx) {
   const ev = events[idx];
   if (!ev) return { teamA, teamB, events };
@@ -110,7 +115,8 @@ function NewMatch({ state, onSave, onCancel }) {
   const canSave = canStep2;
   const [saving, setSaving] = React.useState(false);
 
-  const save = async () => {
+  // played=false: "Salvar só os times" (agendada). played=true: salvar com gols.
+  const save = async (played) => {
     if (saving) return;
     setSaving(true);
     try {
@@ -119,6 +125,7 @@ function NewMatch({ state, onSave, onCancel }) {
         teamA: { ...teamA, players: [...teamA.players] },
         teamB: { ...teamB, players: [...teamB.players] },
         events: events.map(e => ({ type: e.type, player: e.player, assist: e.assist, team: e.team })),
+        played,
       };
       await onSave(m);
     } catch (err) {
@@ -206,7 +213,7 @@ function NewMatch({ state, onSave, onCancel }) {
               {allPlayedIds.length} escalados · {state.players.length - allPlayedIds.length} de fora
             </div>
             <div style={{ display:'flex', gap: 8, flexWrap:'wrap' }}>
-              <Button variant="ghost" onClick={save} disabled={!canStep2 || saving}>
+              <Button variant="ghost" onClick={()=>save(false)} disabled={!canStep2 || saving}>
                 {saving ? 'Salvando…' : 'Salvar só os times'}
               </Button>
               <Button onClick={()=>setStep(2)} disabled={!canStep2 || saving}>
@@ -224,7 +231,7 @@ function NewMatch({ state, onSave, onCancel }) {
 
           <div className="mobile-row" style={{ marginTop: 24, display:'flex', justifyContent:'space-between', gap: 12 }}>
             <Button variant="ghost" onClick={()=>setStep(1)}>← Voltar</Button>
-            <Button variant="accent" onClick={save} disabled={!canSave || saving}>
+            <Button variant="accent" onClick={()=>save(true)} disabled={!canSave || saving}>
               {saving ? 'Salvando…' : 'Salvar partida ✓'}
             </Button>
           </div>
@@ -242,6 +249,7 @@ function EditMatchEvents({ match, state, onSave, onCancel }) {
   const initialEvents = (match.events || []).map(e => ({...e}));
   const computeScore = (evs, side) => evs.filter(e => e.team === side).length;
 
+  const [date, setDate] = React.useState(match.date);
   const [teamA, setTeamA] = React.useState({
     ...match.teamA,
     players: [...(match.teamA?.players || [])],
@@ -253,6 +261,8 @@ function EditMatchEvents({ match, state, onSave, onCancel }) {
     score: computeScore(initialEvents, 'B'),
   });
   const [events, setEvents] = React.useState(initialEvents);
+  // Status escolhido quando não há gols. Com gols, played é sempre true.
+  const [finished, setFinished] = React.useState(!!match.played);
   const [saving, setSaving] = React.useState(false);
 
   const addEvent = (team, pid, assistId) => {
@@ -264,14 +274,39 @@ function EditMatchEvents({ match, state, onSave, onCancel }) {
     setTeamA(next.teamA); setTeamB(next.teamB); setEvents(next.events);
   };
 
+  // Edita escalação. Bloqueia remover quem tem gol/assistência na partida.
+  const togglePlayer = (side, pid) => {
+    const team = side === 'A' ? teamA : teamB;
+    const removing = team.players.includes(pid);
+    if (removing && hasEvents(events, pid)) {
+      const p = playerById[pid];
+      showToast(
+        `${p ? p.name : 'Esse jogador'} tem gol ou assistência nesta partida. Remova os gols dele primeiro pra poder tirá-lo do time.`,
+        { tone: 'error' }
+      );
+      return;
+    }
+    const setTeam = side === 'A' ? setTeamA : setTeamB;
+    setTeam(t => ({
+      ...t,
+      players: removing ? t.players.filter(x=>x!==pid) : [...t.players, pid],
+    }));
+  };
+
+  const hasGoals = events.length > 0;
+  const played = hasGoals ? true : finished;
+  const canSave = teamA.players.length > 0 && teamB.players.length > 0;
+
   const save = async () => {
-    if (saving) return;
+    if (saving || !canSave) return;
     setSaving(true);
     try {
       await onSave({
+        date,
         team_a: { ...teamA, players: [...teamA.players] },
         team_b: { ...teamB, players: [...teamB.players] },
         events: events.map(e => ({ type: e.type, player: e.player, assist: e.assist, team: e.team })),
+        played,
       });
     } catch (err) {
       // toast já é mostrado pelo updateMatchLocal no app.jsx
@@ -279,6 +314,21 @@ function EditMatchEvents({ match, state, onSave, onCancel }) {
       setSaving(false);
     }
   };
+
+  const teamHeader = (team) => (
+    <div style={{ display:'flex', alignItems:'center', gap: 10, marginBottom: 12 }}>
+      <div style={{
+        width: 14, height: 14, borderRadius: 3, flexShrink: 0, background: team.color,
+        border: team.color === '#f4f1ea' ? '1px solid var(--line-2)' : 'none',
+      }}/>
+      <div className="team-name" style={{
+        flex: 1, minWidth: 0, fontFamily:'var(--font-head)', fontWeight:'var(--head-weight)',
+        textTransform:'var(--head-transform)', letterSpacing:'var(--head-tracking)',
+        fontSize: 18, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap',
+      }}>{team.name}</div>
+      <Badge>{team.players.length}</Badge>
+    </div>
+  );
 
   return (
     <div style={{ display:'flex', flexDirection:'column', gap: 24 }}>
@@ -292,18 +342,80 @@ function EditMatchEvents({ match, state, onSave, onCancel }) {
         fontFamily: 'var(--font-head)', fontWeight: 'var(--head-weight)',
         textTransform: 'var(--head-transform)', letterSpacing: 'var(--head-tracking)',
         fontSize: 36, margin: 0, lineHeight: 1.1,
-      }}>Editar gols</h1>
+      }}>Editar partida</h1>
 
+      {/* Data + escalação */}
+      <Card className="card-mobile">
+        <div style={{ display:'flex', alignItems:'center', gap: 12, marginBottom: 20, flexWrap:'wrap' }}>
+          <span style={{ fontSize: 13, color:'var(--fg-2)' }}>Data:</span>
+          <input type="date" value={date} onChange={e=>setDate(e.target.value)}
+                 style={{
+                   padding: '8px 12px', background:'var(--surface-2)',
+                   border:'1px solid var(--line)', borderRadius:'var(--radius)',
+                   color:'var(--fg)', fontFamily:'var(--font-body)', fontSize: 14,
+                 }}/>
+        </div>
+
+        <div className="grid-2">
+          {[{ t: teamA, side: 'A' }, { t: teamB, side: 'B' }].map(({ t, side }) => (
+            <div key={side}>
+              {teamHeader(t)}
+              <PlayerPicker players={state.players}
+                            selected={t.players}
+                            onToggle={(pid)=>togglePlayer(side, pid)}
+                            exclude={side==='A' ? teamB.players : teamA.players}/>
+            </div>
+          ))}
+        </div>
+      </Card>
+
+      {/* Gols */}
       <Card className="card-mobile">
         <GoalsForm teamA={teamA} teamB={teamB} events={events} playerById={playerById}
                    onAddEvent={addEvent} onRemoveEvent={removeEvent}/>
+      </Card>
 
-        <div className="mobile-row" style={{ marginTop: 24, display:'flex', justifyContent:'space-between', gap: 12 }}>
+      {/* Status — só editável quando não há gols */}
+      <Card className="card-mobile">
+        <div style={{
+          fontSize: 11, fontWeight: 600, letterSpacing: '0.08em',
+          textTransform: 'uppercase', color: 'var(--fg-3)', marginBottom: 12,
+        }}>Status da partida</div>
+        {hasGoals ? (
+          <div style={{ fontSize: 13, color:'var(--fg-2)' }}>
+            Finalizada — tem gols registrados, conta nas estatísticas.
+          </div>
+        ) : (
+          <div style={{ display:'flex', gap: 8, flexWrap:'wrap' }}>
+            {[
+              { val: false, label: 'Agendada · vai ocorrer em breve' },
+              { val: true,  label: 'Finalizada · 0×0' },
+            ].map(opt => (
+              <button key={String(opt.val)} type="button" onClick={()=>setFinished(opt.val)}
+                style={{
+                  padding: '8px 14px', borderRadius: 'var(--radius)',
+                  border: '1px solid ' + (finished===opt.val ? 'var(--fg)' : 'var(--line-2)'),
+                  background: finished===opt.val ? 'var(--fg)' : 'transparent',
+                  color: finished===opt.val ? 'var(--bg)' : 'var(--fg)',
+                  fontFamily:'var(--font-body)', fontSize: 13, fontWeight: 600, cursor:'pointer',
+                }}>{opt.label}</button>
+            ))}
+          </div>
+        )}
+      </Card>
+
+      <Card className="card-mobile">
+        <div className="mobile-row" style={{ display:'flex', justifyContent:'space-between', gap: 12 }}>
           <Button variant="ghost" onClick={onCancel}>← Cancelar</Button>
-          <Button variant="accent" onClick={save} disabled={saving}>
+          <Button variant="accent" onClick={save} disabled={!canSave || saving}>
             {saving ? 'Salvando…' : 'Salvar alterações ✓'}
           </Button>
         </div>
+        {!canSave && (
+          <div style={{ marginTop: 10, fontSize: 12, color:'var(--loss)' }}>
+            Cada time precisa de pelo menos um jogador.
+          </div>
+        )}
       </Card>
     </div>
   );

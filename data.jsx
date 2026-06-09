@@ -11,7 +11,11 @@ function computeStats(players, matches) {
     };
   }
 
-  for (const m of matches) {
+  // Só partidas finalizadas contam pros stats. Partidas agendadas
+  // (played=false, "vai ocorrer em breve") são ignoradas até terem resultado.
+  const playedMatches = matches.filter(m => m.played);
+
+  for (const m of playedMatches) {
     const winA = m.teamA.score > m.teamB.score;
     const winB = m.teamB.score > m.teamA.score;
     const draw = m.teamA.score === m.teamB.score;
@@ -41,7 +45,7 @@ function computeStats(players, matches) {
 
   for (const id in stats) {
     const s = stats[id];
-    s.attendance = matches.length ? s.played / matches.length : 0;
+    s.attendance = playedMatches.length ? s.played / playedMatches.length : 0;
   }
 
   return stats;
