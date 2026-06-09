@@ -186,22 +186,24 @@ function MatchScoreboard({ match, playerById, compact = false }) {
         <TeamCol team={match.teamB} won={winB} align="left" playerById={playerById} compact={compact}/>
       </div>
 
-      {!compact && match.events && match.events.length > 0 && (
-        <div style={{ marginTop: 22, paddingTop: 16, borderTop: '1px solid var(--line)' }}>
-          <div className="grid-2 events-grid">
-            <div>
-              {match.events.filter(e=>e.team!=='B').map((ev, i) => (
-                <EventRow key={'a'+i} ev={ev} playerById={playerById} side="left"/>
-              ))}
-            </div>
-            <div>
-              {match.events.filter(e=>e.team==='B').map((ev, i) => (
-                <EventRow key={'b'+i} ev={ev} playerById={playerById} side="right"/>
-              ))}
+      {!compact && match.events && match.events.length > 0 && (() => {
+        const tallies = matchTallies(match.events);
+        const teamRows = (team, side) => team.players
+          .map(pid => ({ p: playerById[pid], t: tallies[pid] }))
+          .filter(x => x.p && x.t && (x.t.goals > 0 || x.t.assists > 0))
+          .map((x, i) => <TallyRow key={side+i} player={x.p} tally={x.t} side={side}/>);
+        const rowsA = teamRows(match.teamA, 'left');
+        const rowsB = teamRows(match.teamB, 'right');
+        if (rowsA.length === 0 && rowsB.length === 0) return null;
+        return (
+          <div style={{ marginTop: 22, paddingTop: 16, borderTop: '1px solid var(--line)' }}>
+            <div className="grid-2 events-grid">
+              <div>{rowsA}</div>
+              <div>{rowsB}</div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
     </div>
   );
 }
@@ -246,19 +248,21 @@ function TeamCol({ team, won, align, playerById, compact }) {
   );
 }
 
-function EventRow({ ev, playerById, side }) {
-  const scorer = playerById[ev.player];
-  const assister = ev.assist ? playerById[ev.assist] : null;
-  if (!scorer) return null;
+function TallyRow({ player, tally, side }) {
+  if (!player) return null;
   return (
     <div className="event-row-text" style={{
       display:'flex', alignItems:'center', gap: 8, padding:'5px 0',
       flexDirection: side === 'right' ? 'row-reverse' : 'row',
       textAlign: side === 'right' ? 'right' : 'left',
     }}>
-      <span style={{ fontSize: 14 }}>⚽</span>
-      <span style={{ fontWeight: 500, fontSize: 14 }}>{scorer.name}</span>
-      {assister && <span style={{ fontSize: 12, color: 'var(--fg-3)' }}>↳ {assister.name}</span>}
+      <span style={{ fontWeight: 500, fontSize: 14 }}>{player.name}</span>
+      {tally.goals > 0 && (
+        <span style={{ fontSize: 13, color:'var(--fg-2)' }}>⚽×{tally.goals}</span>
+      )}
+      {tally.assists > 0 && (
+        <span style={{ fontSize: 13, color:'var(--fg-3)' }}>🅰️×{tally.assists}</span>
+      )}
     </div>
   );
 }
@@ -540,8 +544,9 @@ function PlayerProfile({ playerId, state, stats, onBack, onSelectMatch, onUpdate
             const oppScore = inA ? m.teamB.score : m.teamA.score;
             const result = myScore>oppScore?'V':myScore<oppScore?'D':'E';
             const tone = result==='V'?'win':result==='D'?'loss':'draw';
-            const goals = m.events.filter(e=>e.type==='goal' && e.player===playerId).length;
-            const assists = m.events.filter(e=>e.type==='goal' && e.assist===playerId).length;
+            const tally = matchTallies(m.events)[playerId] || { goals: 0, assists: 0 };
+            const goals = tally.goals;
+            const assists = tally.assists;
             return (
               <div key={m.id} onClick={()=>onSelectMatch(m.id)} className="player-history-row" style={{
                 display:'grid', gridTemplateColumns:'90px auto 1fr auto', gap: 12,

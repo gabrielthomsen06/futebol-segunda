@@ -38,7 +38,11 @@ function computeStats(players, matches) {
     for (const ev of m.events) {
       if (ev.type === 'goal') {
         if (stats[ev.player]) stats[ev.player].goals++;
+        // ev.assist: formato antigo (assistência embutida no gol). Mantido por
+        // compatibilidade com partidas registradas antes da entrada por quantidade.
         if (ev.assist && stats[ev.assist]) stats[ev.assist].assists++;
+      } else if (ev.type === 'assist') {
+        if (stats[ev.player]) stats[ev.player].assists++;
       }
     }
   }
@@ -51,6 +55,27 @@ function computeStats(players, matches) {
   return stats;
 }
 
+// Agrega gols/assistências por jogador numa única partida. Lida com o formato
+// antigo (assistência embutida no gol) e o novo (eventos 'goal'/'assist'
+// separados). Retorna { [playerId]: { goals, assists } }.
+function matchTallies(events) {
+  const t = {};
+  const bump = (pid, key) => {
+    if (!pid) return;
+    if (!t[pid]) t[pid] = { goals: 0, assists: 0 };
+    t[pid][key]++;
+  };
+  for (const ev of (events || [])) {
+    if (ev.type === 'goal') {
+      bump(ev.player, 'goals');
+      if (ev.assist) bump(ev.assist, 'assists');
+    } else if (ev.type === 'assist') {
+      bump(ev.player, 'assists');
+    }
+  }
+  return t;
+}
+
 function fmtDate(iso) {
   const d = new Date(iso + 'T12:00:00');
   return d.toLocaleDateString('pt-BR', { day: '2-digit', month: 'short' }).replace('.', '');
@@ -61,4 +86,4 @@ function fmtDateLong(iso) {
   return d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: 'long' });
 }
 
-Object.assign(window, { computeStats, fmtDate, fmtDateLong });
+Object.assign(window, { computeStats, matchTallies, fmtDate, fmtDateLong });
